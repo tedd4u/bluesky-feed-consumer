@@ -56,6 +56,7 @@ fi
 
 cd /opt/bluesky-feed-consumer
 git config --global --add safe.directory /opt/bluesky-feed-consumer
+sudo chown -R \$(whoami) /opt/bluesky-feed-consumer
 git pull origin master
 
 # Install/sync dependencies
