@@ -52,16 +52,16 @@ def upgrade() -> None:
         sa.Column("prev_repost_count", sa.Integer),
         sa.Column("prev_reply_count", sa.Integer),
         sa.Column(
-            "top_liked", postgresql.JSONB, nullable=False, server_default="'[]'"
+            "top_liked", postgresql.JSONB, nullable=False, server_default=sa.text("'[]'")
         ),
         sa.Column(
-            "top_reposted", postgresql.JSONB, nullable=False, server_default="'[]'"
+            "top_reposted", postgresql.JSONB, nullable=False, server_default=sa.text("'[]'")
         ),
         sa.Column(
             "language_breakdown",
             postgresql.JSONB,
             nullable=False,
-            server_default="'{}'",
+            server_default=sa.text("'{}'"),
         ),
         sa.Column("created_at", _ts, nullable=False, server_default=now),
         schema="stats",

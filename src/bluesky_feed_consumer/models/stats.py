@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import JSON, DateTime, Index, Integer, func
+from sqlalchemy import JSON, DateTime, Index, Integer, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,13 +31,13 @@ class StatSnapshot(Base):
     prev_reply_count: Mapped[int | None] = mapped_column(Integer)
 
     top_liked: Mapped[dict[str, object]] = mapped_column(
-        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default="'[]'"
+        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default=text("'[]'")
     )
     top_reposted: Mapped[dict[str, object]] = mapped_column(
-        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default="'[]'"
+        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default=text("'[]'")
     )
     language_breakdown: Mapped[dict[str, object]] = mapped_column(
-        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default="'{}'"
+        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default=text("'{}'")
     )
 
     created_at: Mapped[datetime.datetime] = mapped_column(
