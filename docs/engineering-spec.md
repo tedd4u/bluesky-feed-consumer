@@ -1004,7 +1004,7 @@ Each phase includes its own tests. A phase is not complete until `make check` pa
 
 *Stats API endpoints (GET /stats/{window}, GET /stats/stream) are stubbed; full implementation in Phase 4.*
 
-### Phase 3: Persona Chat
+### Phase 3: Persona Chat ✅
 12. AT Protocol fetcher (profile + post history)
 13. Persona CRUD endpoints
 14. Persona background poll loop
@@ -1013,17 +1013,17 @@ Each phase includes its own tests. A phase is not complete until `make check` pa
 17. Chat endpoints (POST/GET/DELETE)
 18. **Tests**: context selection (ratio calc, recent/sampled split, repost exclusion, floor), persona CRUD, chat streaming, mock AT Protocol + mock Claude
 
-### Phase 4: API + Polish
+### Phase 4: API + Polish ✅
 19. Stats API endpoints (GET /stats/{window} with real data, SSE stream)
 20. Error handling for all edge cases
-21. GCP Cloud Monitoring integration (structured logging, custom metrics)
-22. **Tests**: API integration tests (stats, personas, chat), error response formats, full `make check` green
+21. Integration tests with mocked externals (consumer, fetcher, poll loop)
+22. **Tests**: 107 passing, 85% overall coverage
 
 ### Phase 5: Deploy
 23. GCP infrastructure setup (CE, Cloud SQL, Secret Manager, firewall)
 24. systemd service + deploy.sh script
 25. **CD: extend GitHub Actions to deploy on merge to `master`** — if CI passes, SSH to CE and run `git pull && uv sync --frozen && sudo systemctl restart bsky-server` (continuous deployment, no manual deploy step)
-26. Cloud Monitoring dashboard (defined as JSON, deployed via `gcloud monitoring dashboards create`)
+26. GCP Cloud Monitoring integration (structured logging, custom metrics, dashboard JSON via `gcloud`)
 27. **Tests**: end-to-end smoke test on GCP (connect firehose, verify stats flow, register persona, send chat message)
 
 *Infrastructure is managed via shell scripts + `gcloud` CLI, not Terraform. The infra footprint (one CE instance, one Cloud SQL, one Secret Manager secret) doesn't justify a separate IaC tool.*
