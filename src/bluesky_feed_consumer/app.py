@@ -91,6 +91,6 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:
         """Service health check."""
-        return {"status": "ok"}
+        return {"status": "ok", "version": "0.1.0"}
 
     return app
