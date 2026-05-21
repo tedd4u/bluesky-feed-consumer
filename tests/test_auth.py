@@ -5,7 +5,9 @@ import pytest
 async def test_health_no_auth(client):
     resp = await client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert "version" in data
 
 
 @pytest.mark.asyncio
