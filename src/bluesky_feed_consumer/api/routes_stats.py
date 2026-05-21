@@ -24,7 +24,9 @@ def _get_processor(request: Request) -> StatsProcessor:
 async def get_stats(
     window: int,
     request: Request,
-    top_n: int = Query(default=10, ge=1, le=50, description="Number of top items to return (max 50)"),
+    top_n: int = Query(
+        default=10, ge=1, le=50, description="Number of top items to return (max 50)"
+    ),
 ) -> dict[str, object]:
     """Return current metrics for a specific time window.
 
