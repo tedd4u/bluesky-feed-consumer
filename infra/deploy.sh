@@ -60,7 +60,11 @@ sudo chown -R \$(whoami) /opt/bluesky-feed-consumer
 git pull origin master
 
 # Install/sync dependencies
-export PATH=\"\$HOME/.local/bin:\$PATH\"
+export PATH=\"/usr/local/bin:\$HOME/.local/bin:\$PATH\"
+if ! command -v uv &>/dev/null; then
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    export PATH=\"\$HOME/.local/bin:\$PATH\"
+fi
 uv sync --frozen
 
 # Write .env from Secret Manager (secrets never touch git)
