@@ -20,11 +20,11 @@ echo "==> CE instance IP: ${CE_IP}"
 # --- Notification Channel (Slack) ---
 echo "==> Creating Slack notification channel"
 
-# Check if channel already exists
+# Check if channel already exists (take first match if multiple)
 EXISTING_CHANNEL=$(gcloud alpha monitoring channels list \
-    --filter="type='slack' AND displayName='bsky-alerts-slack'" \
+    --filter="type='webhook_tokenauth' AND displayName='bsky-alerts-slack'" \
     --format='value(name)' \
-    --project="${PROJECT_ID}" 2>/dev/null || true)
+    --project="${PROJECT_ID}" 2>/dev/null | head -1 || true)
 
 if [[ -n "${EXISTING_CHANNEL}" ]]; then
     CHANNEL_ID="${EXISTING_CHANNEL}"
@@ -50,15 +50,14 @@ EXISTING_CHECK=$(gcloud monitoring uptime list-configs \
 if [[ -n "${EXISTING_CHECK}" ]]; then
     echo "    Uptime check already exists."
 else
-    gcloud monitoring uptime create \
-        --display-name="bsky-server-health" \
+    gcloud monitoring uptime create "bsky-server-health" \
         --resource-type="uptime-url" \
-        --hostname="${CE_IP}" \
+        --resource-labels="host=${CE_IP},project_id=${PROJECT_ID}" \
         --port=8000 \
         --path="/health" \
         --protocol="http" \
-        --period=60 \
-        --timeout=10s \
+        --period=1 \
+        --timeout=10 \
         --project="${PROJECT_ID}"
     echo "    Created uptime check."
 fi
@@ -67,6 +66,9 @@ fi
 echo "==> Creating alert policies"
 
 # Helper: create alert policy from JSON if it doesn't exist
+POLICY_TMPFILE=$(mktemp)
+trap 'rm -f "${POLICY_TMPFILE}"' EXIT
+
 create_alert_if_missing() {
     local display_name="$1"
     local policy_json="$2"
@@ -79,8 +81,9 @@ create_alert_if_missing() {
     if [[ -n "${existing}" ]]; then
         echo "    Policy '${display_name}' already exists."
     else
-        echo "${policy_json}" | gcloud alpha monitoring policies create \
-            --policy-from-file=- \
+        echo "${policy_json}" > "${POLICY_TMPFILE}"
+        gcloud alpha monitoring policies create \
+            --policy-from-file="${POLICY_TMPFILE}" \
             --project="${PROJECT_ID}"
         echo "    Created policy: ${display_name}"
     fi
