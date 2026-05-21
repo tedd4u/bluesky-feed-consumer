@@ -7,6 +7,7 @@ A real-time Bluesky firehose consumer that computes rolling statistics (post cou
 - Python 3.12+
 - PostgreSQL 16+
 - An [Anthropic API key](https://console.anthropic.com/) (for persona chat)
+- A Bluesky API Key (called an "App Password"). Go to Settings > Privacy & Security > App Passwords to create one.
 
 ## Setup
 
