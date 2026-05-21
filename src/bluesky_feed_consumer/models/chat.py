@@ -25,6 +25,10 @@ class MessageRole(enum.StrEnum):
     ASSISTANT = "assistant"
 
 
+def _enum_values(e: type[enum.Enum]) -> list[str]:
+    return [x.value for x in e]
+
+
 class Persona(Base):
     __tablename__ = "personas"
     __table_args__ = {"schema": "chat"}
@@ -39,7 +43,7 @@ class Persona(Base):
     pinned_post_text: Mapped[str | None] = mapped_column(Text)
 
     status: Mapped[PersonaStatus] = mapped_column(
-        Enum(PersonaStatus, schema="chat", name="persona_status"),
+        Enum(PersonaStatus, schema="chat", name="persona_status", values_callable=_enum_values),
         nullable=False,
         default=PersonaStatus.LOADING,
     )
@@ -76,7 +80,8 @@ class PersonaPost(Base):
     )
     post_uri: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     post_type: Mapped[PostType] = mapped_column(
-        Enum(PostType, schema="chat", name="post_type"), nullable=False
+        Enum(PostType, schema="chat", name="post_type", values_callable=_enum_values),
+        nullable=False,
     )
     text: Mapped[str] = mapped_column(Text, nullable=False)
     parent_text: Mapped[str | None] = mapped_column(Text)
@@ -107,7 +112,8 @@ class ChatMessage(Base):
         ForeignKey("chat.personas.id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[MessageRole] = mapped_column(
-        Enum(MessageRole, schema="chat", name="message_role"), nullable=False
+        Enum(MessageRole, schema="chat", name="message_role", values_callable=_enum_values),
+        nullable=False,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
