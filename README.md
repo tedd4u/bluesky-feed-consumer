@@ -118,6 +118,24 @@ cd infra
 ./deploy.sh           # Pulls latest code, syncs deps, re-writes .env, runs migrations, restarts
 ```
 
+## API Exploration (Bruno)
+
+An [OpenAPI 3.1 spec](docs/openapi.json) is included for importing into API clients. To set up [Bruno](https://www.usebruno.com/):
+
+1. **Import**: Open Bruno → Import Collection → **OpenAPI V3** → select `docs/openapi.json`
+2. **Environment**: Create a Bruno environment with two variables:
+   - `baseUrl` — e.g. `http://localhost:8000` (or your deployed URL)
+   - `apiKey` — your `BSKY_API_KEY` value
+3. **Collection headers**: Add `X-Api-Key: {{apiKey}}` as a collection-level header so it applies to every request
+
+The live service also exposes Swagger UI at `/docs` and the raw spec at `/openapi.json`.
+
+To refresh the spec after endpoint changes:
+
+```bash
+curl -s http://localhost:8000/openapi.json | python3 -m json.tool > docs/openapi.json
+```
+
 ## Configuration
 
 All config is via environment variables (prefixed `BSKY_`) or `.env` file. See `.env.example` for available options and `src/bluesky_feed_consumer/config.py` for defaults.
