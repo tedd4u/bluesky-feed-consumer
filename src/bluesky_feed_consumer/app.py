@@ -1,9 +1,11 @@
 import asyncio
 import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from bluesky_feed_consumer.api.routes_personas import router as personas_router
 from bluesky_feed_consumer.api.routes_sse import router as sse_router
@@ -11,6 +13,7 @@ from bluesky_feed_consumer.api.routes_stats import router as stats_router
 from bluesky_feed_consumer.config import Settings, get_settings
 from bluesky_feed_consumer.db import dispose_db, get_session_factory, init_db
 from bluesky_feed_consumer.ingestion.consumer import FirehoseConsumer
+from bluesky_feed_consumer.monitoring import get_metrics, setup_logging
 from bluesky_feed_consumer.persona.fetcher import PersonaFetcher
 from bluesky_feed_consumer.persona.poll import run_persona_poll
 from bluesky_feed_consumer.stats.processor import StatsProcessor
@@ -19,9 +22,25 @@ from bluesky_feed_consumer.stats.snapshot import flush_stats_to_db, run_snapshot
 logger = logging.getLogger(__name__)
 
 
+class _MetricsMiddleware(BaseHTTPMiddleware):
+    """Track API request count and latency."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        # Skip metrics/health endpoints to avoid noise
+        if request.url.path in ("/health", "/metrics"):
+            return await call_next(request)
+        start = time.perf_counter()
+        response = await call_next(request)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        metrics = get_metrics()
+        metrics.record_request(elapsed_ms, error=response.status_code >= 500)
+        return response
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = get_settings()
+    setup_logging(json_format=settings.json_logs)
     init_db(settings)
     session_factory = get_session_factory()
 
@@ -84,6 +103,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    app.add_middleware(_MetricsMiddleware)
     app.include_router(stats_router)
     app.include_router(personas_router)
     app.include_router(sse_router)
@@ -92,5 +112,10 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         """Service health check."""
         return {"status": "ok", "version": "0.1.0"}
+
+    @app.get("/metrics", tags=["system"])
+    async def metrics() -> dict[str, float | int]:
+        """Operational metrics for monitoring dashboards."""
+        return get_metrics().snapshot()
 
     return app

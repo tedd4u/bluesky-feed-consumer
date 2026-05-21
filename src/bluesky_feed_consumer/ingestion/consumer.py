@@ -11,6 +11,7 @@ from websockets.exceptions import ConnectionClosed
 
 from bluesky_feed_consumer.config import Settings
 from bluesky_feed_consumer.ingestion.parser import FirehoseEvent, parse_event
+from bluesky_feed_consumer.monitoring import get_metrics
 from bluesky_feed_consumer.stats.processor import StatsProcessor
 
 logger = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ class FirehoseConsumer:
     def _handle_event(self, event: FirehoseEvent) -> None:
         """Dispatch a parsed event to the stats processor."""
         self.processor.ingest(event)
+        get_metrics().record_firehose_event()
 
     async def _backoff(self) -> None:
         """Sleep with jitter, then increase delay up to max."""

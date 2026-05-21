@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
 
 from bluesky_feed_consumer.api.deps import RequireAuth
+from bluesky_feed_consumer.monitoring import get_metrics, track_sse
 from bluesky_feed_consumer.stats.processor import StatsProcessor
 
 logger = logging.getLogger(__name__)
@@ -28,29 +29,32 @@ async def stream_stats(request: Request) -> EventSourceResponse:
     processor: StatsProcessor = request.app.state.processor
     push_interval: float = request.app.state.settings.sse_push_interval
 
+    metrics = get_metrics()
+
     async def event_stream() -> AsyncIterator[dict[str, str]]:
-        # Initial snapshot with full velocity history
-        stats = processor.get_current_stats()
-        yield {
-            "event": "snapshot",
-            "data": json.dumps(stats),
-        }
-
-        # Subsequent updates every push_interval seconds
-        while True:
-            await asyncio.sleep(push_interval)
-
-            # Check if client disconnected
-            if await request.is_disconnected():
-                break
-
-            # Rotate velocity bucket (produces new rate data point)
-            processor.velocity.rotate_bucket()
-
+        async with track_sse(metrics):
+            # Initial snapshot with full velocity history
             stats = processor.get_current_stats()
             yield {
-                "event": "update",
+                "event": "snapshot",
                 "data": json.dumps(stats),
             }
+
+            # Subsequent updates every push_interval seconds
+            while True:
+                await asyncio.sleep(push_interval)
+
+                # Check if client disconnected
+                if await request.is_disconnected():
+                    break
+
+                # Rotate velocity bucket (produces new rate data point)
+                processor.velocity.rotate_bucket()
+
+                stats = processor.get_current_stats()
+                yield {
+                    "event": "update",
+                    "data": json.dumps(stats),
+                }
 
     return EventSourceResponse(event_stream())
