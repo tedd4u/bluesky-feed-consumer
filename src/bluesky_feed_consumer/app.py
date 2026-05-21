@@ -11,6 +11,8 @@ from bluesky_feed_consumer.api.routes_stats import router as stats_router
 from bluesky_feed_consumer.config import Settings, get_settings
 from bluesky_feed_consumer.db import dispose_db, get_session_factory, init_db
 from bluesky_feed_consumer.ingestion.consumer import FirehoseConsumer
+from bluesky_feed_consumer.persona.fetcher import PersonaFetcher
+from bluesky_feed_consumer.persona.poll import run_persona_poll
 from bluesky_feed_consumer.stats.processor import StatsProcessor
 from bluesky_feed_consumer.stats.snapshot import flush_stats_to_db, run_snapshot_loop
 
@@ -26,11 +28,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Build core services
     processor = StatsProcessor(settings)
     consumer = FirehoseConsumer(settings, processor)
+    fetcher = PersonaFetcher(settings)
 
     # Store in app state for dependency injection in route handlers
     app.state.processor = processor
     app.state.consumer = consumer
     app.state.settings = settings
+    app.state.session_factory = session_factory
 
     # Launch background tasks
     tasks: list[asyncio.Task[None]] = []
@@ -42,7 +46,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 name="snapshot-loop",
             )
         )
-        logger.info("Background tasks started: firehose consumer, snapshot loop.")
+
+    tasks.append(
+        asyncio.create_task(
+            run_persona_poll(fetcher, session_factory, settings),
+            name="persona-poll",
+        )
+    )
+    logger.info("Background tasks started.")
 
     yield
 
@@ -55,6 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if tasks:
         await asyncio.gather(*tasks, return_exceptions=True)
 
+    await fetcher.close()
     await dispose_db()
     logger.info("Shutdown complete.")
 

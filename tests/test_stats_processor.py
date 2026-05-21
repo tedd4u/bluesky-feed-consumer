@@ -169,3 +169,85 @@ class TestStatsProcessor:
         deltas = window_60["deltas"]
         assert isinstance(deltas, dict)
         assert deltas["post_count"] == 0.5  # (15-10)/10
+
+    def test_deltas_none_when_previous_zero(self) -> None:
+        """Delta is None when previous window count was 0 (avoid division by zero)."""
+        proc = StatsProcessor(_settings())
+
+        # First window: 0 posts (empty), just rotate
+        proc.rotate_window(60)
+
+        # Second window: some posts
+        proc.ingest(_event("post"))
+
+        stats = proc.get_current_stats()
+        windows = stats["windows"]
+        assert isinstance(windows, dict)
+        window_60 = windows["60"]
+        assert isinstance(window_60, dict)
+        deltas = window_60["deltas"]
+        assert isinstance(deltas, dict)
+        assert deltas["post_count"] is None
+
+
+class TestTopNHeap:
+    def test_record_like_target_tracks_counts(self) -> None:
+        acc = WindowAccumulator(60, top_n_limit=3, top_languages=3)
+        evt = _event("like")
+
+        acc.record_like_target("at://post/1", evt)
+        acc.record_like_target("at://post/1", evt)
+        acc.record_like_target("at://post/2", evt)
+
+        snap = acc.snapshot()
+        assert len(snap.top_liked) == 2
+        # Highest count first
+        assert snap.top_liked[0]["count"] == 2
+        assert snap.top_liked[0]["uri"] == "at://post/1"
+
+    def test_record_repost_target_tracks_counts(self) -> None:
+        acc = WindowAccumulator(60, top_n_limit=3, top_languages=3)
+        evt = _event("repost")
+
+        acc.record_repost_target("at://post/a", evt)
+        acc.record_repost_target("at://post/b", evt)
+        acc.record_repost_target("at://post/b", evt)
+
+        snap = acc.snapshot()
+        assert len(snap.top_reposted) == 2
+        assert snap.top_reposted[0]["uri"] == "at://post/b"
+        assert snap.top_reposted[0]["count"] == 2
+
+    def test_heap_caps_at_limit(self) -> None:
+        """Heap never exceeds top_n_limit entries."""
+        acc = WindowAccumulator(60, top_n_limit=3, top_languages=3)
+        evt = _event("like")
+
+        # Add 5 different URIs with increasing counts
+        for i in range(5):
+            for _ in range(i + 1):
+                acc.record_like_target(f"at://post/{i}", evt)
+
+        snap = acc.snapshot()
+        assert len(snap.top_liked) == 3
+        # Should keep the top 3 by count (counts: 5, 4, 3)
+        counts = [item["count"] for item in snap.top_liked]
+        assert counts == [5, 4, 3]
+
+    def test_heap_replaces_lowest_when_higher_arrives(self) -> None:
+        """A new item with higher count displaces the lowest in the heap."""
+        acc = WindowAccumulator(60, top_n_limit=2, top_languages=3)
+        evt = _event("like")
+
+        # Two items with count 1
+        acc.record_like_target("at://low1", evt)
+        acc.record_like_target("at://low2", evt)
+
+        # New item with count 5 (should displace one of the 1-count items)
+        for _ in range(5):
+            acc.record_like_target("at://high", evt)
+
+        snap = acc.snapshot()
+        assert len(snap.top_liked) == 2
+        uris = {item["uri"] for item in snap.top_liked}
+        assert "at://high" in uris

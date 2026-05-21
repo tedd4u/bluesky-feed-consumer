@@ -20,9 +20,7 @@ class VelocityTracker:
 
     def __init__(self, settings: Settings) -> None:
         self.bucket_seconds = settings.velocity_bucket_seconds
-        bucket_count = (
-            settings.velocity_history_seconds // self.bucket_seconds
-        )
+        bucket_count = settings.velocity_history_seconds // self.bucket_seconds
         self.buckets: deque[int] = deque(maxlen=bucket_count)
         self.current_count: int = 0
 

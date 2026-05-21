@@ -28,21 +28,21 @@ Single Python process running on GCP Compute Engine (e2-small, 0.5 vCPU, 2GB RAM
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Compute Engine (e2-small)               │
+│                  Compute Engine (e2-small)              │
 │                                                         │
 │  ┌──────────────┐    ┌──────────────┐                   │
-│  │   Firehose    │───▶│    Stats     │                   │
-│  │   Consumer    │    │  Processor   │                   │
-│  │  (WebSocket)  │    │ (in-memory)  │                   │
+│  │   Firehose   │───▶│    Stats     │                   │
+│  │   Consumer   │    │  Processor   │                   │
+│  │  (WebSocket) │    │ (in-memory)  │                   │
 │  └──────┬───────┘    └──────┬───────┘                   │
-│         │                   │                            │
-│         │  ┌────────────────┘                            │
-│         │  │                                             │
-│         ▼  ▼                                             │
+│         │                   │                           │
+│         │  ┌────────────────┘                           │
+│         │  │                                            │
+│         ▼  ▼                                            │
 │  ┌──────────────┐    ┌──────────────┐                   │
-│  │   FastAPI     │    │   Persona    │                   │
-│  │   Server      │◀──▶│   Module     │                   │
-│  │  (REST + SSE) │    │ (context +   │                   │
+│  │   FastAPI    │    │   Persona    │                   │
+│  │   Server     │◀──▶│   Module     │                   │
+│  │  (REST + SSE)│    │ (context +   │                   │
 │  └──────┬───────┘    │  Claude API) │                   │
 │         │            └──────────────┘                   │
 └─────────┼───────────────────────────────────────────────┘

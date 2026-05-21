@@ -107,7 +107,10 @@ class WindowAccumulator:
         self._update_heap(
             self._liked_heap,
             TopItem(
-                uri=target_uri, did="", text="", count=count,
+                uri=target_uri,
+                did="",
+                text="",
+                count=count,
                 timestamp=event.timestamp,
             ),
         )
@@ -119,7 +122,10 @@ class WindowAccumulator:
         self._update_heap(
             self._reposted_heap,
             TopItem(
-                uri=target_uri, did="", text="", count=count,
+                uri=target_uri,
+                did="",
+                text="",
+                count=count,
                 timestamp=event.timestamp,
             ),
         )
@@ -182,9 +188,7 @@ class WindowAccumulator:
         if total == 0:
             return {}
 
-        sorted_langs = sorted(
-            self._lang_counts.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_langs = sorted(self._lang_counts.items(), key=lambda x: x[1], reverse=True)
 
         breakdown: dict[str, float] = {}
         other_count = 0
@@ -267,9 +271,7 @@ class StatsProcessor:
         }
 
 
-def _compute_deltas(
-    current: WindowSnapshot, previous: WindowSnapshot
-) -> dict[str, float | None]:
+def _compute_deltas(current: WindowSnapshot, previous: WindowSnapshot) -> dict[str, float | None]:
     """Compute period-over-period percentage change."""
     result: dict[str, float | None] = {}
     for metric in ("post_count", "user_count", "like_count", "repost_count", "reply_count"):

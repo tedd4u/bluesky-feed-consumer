@@ -143,11 +143,13 @@ class TestParseEdgeCases:
         assert parse_event(msg) is None
 
     def test_non_create_operation(self) -> None:
-        msg = json.dumps({
-            "did": "did:plc:test",
-            "kind": "commit",
-            "commit": {"operation": "delete", "collection": "app.bsky.feed.post"},
-        })
+        msg = json.dumps(
+            {
+                "did": "did:plc:test",
+                "kind": "commit",
+                "commit": {"operation": "delete", "collection": "app.bsky.feed.post"},
+            }
+        )
         assert parse_event(msg) is None
 
     def test_unknown_collection(self) -> None:
@@ -163,3 +165,47 @@ class TestParseEdgeCases:
         event = parse_event(raw)
         assert event is not None
         assert event.timestamp.year == 2024
+
+    def test_missing_timestamp_uses_now(self) -> None:
+        """When time_us is missing, falls back to current time."""
+        msg = {
+            "did": "did:plc:test",
+            "kind": "commit",
+            "commit": {
+                "rev": "rev1",
+                "operation": "create",
+                "collection": "app.bsky.feed.post",
+                "rkey": "abc",
+                "record": {"text": "no ts"},
+            },
+        }
+        event = parse_event(json.dumps(msg))
+        assert event is not None
+        # Should be recent (within last second)
+        import datetime
+
+        assert (datetime.datetime.now(datetime.UTC) - event.timestamp).total_seconds() < 2
+
+    def test_non_string_text_treated_as_empty(self) -> None:
+        """If record text is not a string (e.g. int), it becomes empty string."""
+        raw = _make_msg("app.bsky.feed.post", {"text": 12345})
+        event = parse_event(raw)
+        assert event is not None
+        assert event.text == ""
+
+    def test_embed_with_non_record_type(self) -> None:
+        """Embed of type images (not record/recordWithMedia) is just a post."""
+        raw = _make_msg(
+            "app.bsky.feed.post",
+            {
+                "text": "Check this photo",
+                "embed": {
+                    "$type": "app.bsky.embed.images",
+                    "images": [],
+                },
+            },
+        )
+        event = parse_event(raw)
+        assert event is not None
+        assert event.kind == "post"
+        assert event.quoted_ref is None

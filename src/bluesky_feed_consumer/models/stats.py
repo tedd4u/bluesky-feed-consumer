@@ -1,7 +1,7 @@
 import datetime
 
-from sqlalchemy import Index, Integer, func
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
+from sqlalchemy import JSON, DateTime, Index, Integer, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from bluesky_feed_consumer.models.base import Base
@@ -16,9 +16,7 @@ class StatSnapshot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     window_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
-    window_start: Mapped[datetime.datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False
-    )
+    window_start: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     post_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     user_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -33,15 +31,15 @@ class StatSnapshot(Base):
     prev_reply_count: Mapped[int | None] = mapped_column(Integer)
 
     top_liked: Mapped[dict[str, object]] = mapped_column(
-        JSONB, nullable=False, server_default="'[]'"
+        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default="'[]'"
     )
     top_reposted: Mapped[dict[str, object]] = mapped_column(
-        JSONB, nullable=False, server_default="'[]'"
+        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default="'[]'"
     )
     language_breakdown: Mapped[dict[str, object]] = mapped_column(
-        JSONB, nullable=False, server_default="'{}'"
+        JSONB().with_variant(JSON, "sqlite"), nullable=False, server_default="'{}'"
     )
 
     created_at: Mapped[datetime.datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
