@@ -114,11 +114,7 @@ def _parse_post(
             "app.bsky.embed.recordWithMedia",
         ):
             embed_record = embed.get("record", {})
-            quoted_uri = (
-                embed_record.get("uri", "")
-                if isinstance(embed_record, dict)
-                else ""
-            )
+            quoted_uri = embed_record.get("uri", "") if isinstance(embed_record, dict) else ""
             if text:
                 return FirehoseEvent(
                     kind="quote",
@@ -144,7 +140,5 @@ def _parse_timestamp(msg: dict[str, object]) -> datetime.datetime:
     """Extract timestamp from Jetstream message (time_us field, microseconds)."""
     time_us = msg.get("time_us")
     if isinstance(time_us, int):
-        return datetime.datetime.fromtimestamp(
-            time_us / 1_000_000, tz=datetime.UTC
-        )
+        return datetime.datetime.fromtimestamp(time_us / 1_000_000, tz=datetime.UTC)
     return datetime.datetime.now(datetime.UTC)

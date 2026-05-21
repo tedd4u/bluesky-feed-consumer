@@ -1,8 +1,8 @@
 import datetime
 import enum
 
-from sqlalchemy import Enum, ForeignKey, Index, Integer, Text, func
-from sqlalchemy.dialects.postgresql import ARRAY, TIMESTAMP
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, Integer, Text, func
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from bluesky_feed_consumer.models.base import Base
@@ -46,13 +46,13 @@ class Persona(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     total_posts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_replies: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_corpus_update: Mapped[datetime.datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    last_corpus_update: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime.datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
     posts: Mapped[list["PersonaPost"]] = relationship(
@@ -81,15 +81,15 @@ class PersonaPost(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     parent_text: Mapped[str | None] = mapped_column(Text)
     quoted_ref: Mapped[str | None] = mapped_column(Text)
-    langs: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
-    posted_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    langs: Mapped[list[str] | None] = mapped_column(ARRAY(Text).with_variant(JSON, "sqlite"))
+    posted_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     like_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     repost_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     reply_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     created_at: Mapped[datetime.datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
     persona: Mapped["Persona"] = relationship(back_populates="posts")
@@ -111,7 +111,7 @@ class ChatMessage(Base):
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
     persona: Mapped["Persona"] = relationship(back_populates="messages")

@@ -73,9 +73,11 @@ Individual targets:
 ```bash
 make lint       # ruff
 make typecheck  # mypy (strict)
-make test       # pytest
+make test       # pytest with line + branch coverage report
 make fmt        # auto-format + auto-fix
 ```
+
+`make test` runs with [pytest-cov](https://pytest-cov.readthedocs.io/) and prints a coverage table with missing lines after each run. No additional setup needed.
 
 ## Configuration
 
@@ -92,6 +94,6 @@ src/bluesky_feed_consumer/
     models/             # ORM models (stats + chat schemas)
     ingestion/          # Jetstream WebSocket consumer + event parser
     stats/              # Rolling window aggregation, velocity tracker, snapshot persistence
-    persona/            # Corpus management, context selection, Claude API chat (WIP)
+    persona/            # Corpus management, context selection, Claude API chat
     api/                # REST endpoints + auth middleware
 ```

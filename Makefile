@@ -16,9 +16,9 @@ lint:
 typecheck:
 	$(BIN)mypy src/
 
-## Run test suite
+## Run test suite with branch coverage
 test:
-	$(BIN)pytest tests/ -v
+	$(BIN)pytest tests/ -v --cov=bluesky_feed_consumer --cov-branch --cov-report=term-missing
 
 ## Auto-format and fix lint errors
 fmt:

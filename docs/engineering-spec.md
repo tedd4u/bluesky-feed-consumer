@@ -28,21 +28,21 @@ Single Python process running on GCP Compute Engine (e2-small, 0.5 vCPU, 2GB RAM
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Compute Engine (e2-small)               │
+│                  Compute Engine (e2-small)              │
 │                                                         │
 │  ┌──────────────┐    ┌──────────────┐                   │
-│  │   Firehose    │───▶│    Stats     │                   │
-│  │   Consumer    │    │  Processor   │                   │
-│  │  (WebSocket)  │    │ (in-memory)  │                   │
+│  │   Firehose   │───▶│    Stats     │                   │
+│  │   Consumer   │    │  Processor   │                   │
+│  │  (WebSocket) │    │ (in-memory)  │                   │
 │  └──────┬───────┘    └──────┬───────┘                   │
-│         │                   │                            │
-│         │  ┌────────────────┘                            │
-│         │  │                                             │
-│         ▼  ▼                                             │
+│         │                   │                           │
+│         │  ┌────────────────┘                           │
+│         │  │                                            │
+│         ▼  ▼                                            │
 │  ┌──────────────┐    ┌──────────────┐                   │
-│  │   FastAPI     │    │   Persona    │                   │
-│  │   Server      │◀──▶│   Module     │                   │
-│  │  (REST + SSE) │    │ (context +   │                   │
+│  │   FastAPI    │    │   Persona    │                   │
+│  │   Server     │◀──▶│   Module     │                   │
+│  │  (REST + SSE)│    │ (context +   │                   │
 │  └──────┬───────┘    │  Claude API) │                   │
 │         │            └──────────────┘                   │
 └─────────┼───────────────────────────────────────────────┘
@@ -76,7 +76,7 @@ Single Python process running on GCP Compute Engine (e2-small, 0.5 vCPU, 2GB RAM
 | HTTP Client | httpx (async) | 0.27+ |
 | WebSocket Client | websockets | 12.0+ |
 | AI | anthropic (Python SDK) | 0.40+ |
-| Testing | pytest + pytest-asyncio + httpx | |
+| Testing | pytest + pytest-asyncio + pytest-cov + httpx | |
 | Linting | ruff | |
 | Type Checking | mypy (strict) | |
 | Package Management | uv | |
@@ -882,29 +882,46 @@ Well within the $100/month budget.
 
 ## 12. Testing Strategy
 
+### Coverage Tooling
+
+Tests run with **pytest-cov** (wraps [coverage.py](https://coverage.readthedocs.io/)) providing both **line** and **branch** coverage on every `make test` invocation. The report shows missing lines and partially-covered branches directly in the terminal.
+
+```bash
+make test   # runs: pytest --cov=bluesky_feed_consumer --cov-branch --cov-report=term-missing
+```
+
+Coverage targets (per module type):
+- **Pure logic modules** (parser, processor, context, velocity): 95–100%
+- **API route handlers**: 70–85% (uncovered lines are SSE streaming paths requiring mock Claude)
+- **I/O modules** (consumer, fetcher, poll, snapshot): deferred to Phase 4 integration tests with mocked externals
+
 ### Unit Tests
 
-| Module | Test Focus |
-|--------|-----------|
-| `test_parser.py` | Event classification from raw JSON: post, reply, quote, like, repost |
-| `test_stats_processor.py` | Window accumulation, rotation, period-over-period delta calculation, top-N ordering |
-| `test_velocity.py` | Ring buffer behavior, bucket rotation, posts/sec calculation |
-| `test_context_selection.py` | Reply ratio calculation, recent/sampled split, floor enforcement, repost exclusion |
+| Module | Test Focus | Tests |
+|--------|-----------|-------|
+| `test_parser.py` | Event classification from raw JSON: post, reply, quote, like, repost, edge cases (missing timestamp, non-string text, non-record embed types) | 16 |
+| `test_stats_processor.py` | Window accumulation, rotation, period-over-period deltas (including zero-division), top-N heap (cap, replacement, ordering) | 18 |
+| `test_velocity.py` | Ring buffer behavior, bucket rotation, posts/sec calculation, cap at maxlen | 7 |
+| `test_context_selection.py` | Reply ratio calculation, recent/sampled split, floor enforcement, slot redistribution, format_for_prompt (bio fallback, pinned post, reply/quote context, display name fallback) | 16 |
+| `test_generator.py` | `_build_messages()` helper: empty history, role mapping, ordering | 3 |
+| `test_config.py` | Default values, environment variable override | 2 |
 
-### API Integration Tests (FastAPI TestClient)
+### API Integration Tests (FastAPI TestClient + SQLite)
 
-| Test File | Coverage |
-|-----------|---------|
-| `test_api_stats.py` | GET /stats/{window} with various windows and top_n params, SSE stream connection |
-| `test_api_personas.py` | POST/GET personas, status endpoint, error cases (duplicate handle, invalid handle) |
-| `test_api_chat.py` | POST chat with streaming, GET history, DELETE history, chat with non-ready persona |
+| Test File | Coverage | Tests |
+|-----------|---------|-------|
+| `test_auth.py` | Health endpoint (no auth), reject missing key, reject bad key, accept valid key | 6 |
+| `test_api_personas.py` | POST/GET personas, duplicate (409), status, 404, chat with non-ready persona (409), empty history, delete history | 8 |
 
-### Mocks
+Test database uses SQLite (async via aiosqlite) with `schema_translate_map` to strip Postgres schema prefixes. Tables are created fresh per test via `Base.metadata.create_all`.
+
+### Mocks (Phase 4)
 
 - **Firehose**: Mock WebSocket server feeding synthetic events for consumer tests
 - **Claude API**: Mock Anthropic client returning canned streaming responses
 - **AT Protocol**: Mock HTTP responses for profile and feed fetching
-- **Database**: Use SQLite async or a test PostgreSQL database (via testcontainers or fixture)
+
+These will close the remaining coverage gap in I/O-heavy modules (`consumer.py`, `fetcher.py`, `poll.py`, `snapshot.py`).
 
 ---
 
@@ -960,6 +977,7 @@ bsky-api-only                # run API without firehose
 | ruff | Lint + format | `pyproject.toml [tool.ruff]` |
 | mypy | Type checking (strict) | `pyproject.toml [tool.mypy]` |
 | pytest | Tests | `pyproject.toml [tool.pytest]` |
+| pytest-cov | Line + branch coverage | Flags in `Makefile` test target |
 | alembic | DB migrations | `alembic.ini` + `alembic/` |
 | make | Task runner | `Makefile` |
 
