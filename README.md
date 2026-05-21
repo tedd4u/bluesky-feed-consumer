@@ -79,6 +79,45 @@ make fmt        # auto-format + auto-fix
 
 `make test` runs with [pytest-cov](https://pytest-cov.readthedocs.io/) and prints a coverage table with missing lines after each run. No additional setup needed.
 
+## GCP Deployment
+
+The `infra/` directory contains shell scripts to provision and deploy the full environment on GCP. Two local config files (both gitignored) drive the scripts:
+
+| File | Purpose |
+|------|---------|
+| `.env` | Application secrets + runtime config (API keys, database URL) |
+| `infra/.env.infra` | GCP infrastructure config (project ID, region, billing, DB password) |
+
+Copy the example and fill in your values:
+
+```bash
+cp infra/.env.infra.example infra/.env.infra
+```
+
+### Spin up from scratch
+
+```bash
+cd infra
+./create-project.sh   # Create GCP project, link billing, enable APIs
+./setup.sh            # Secret Manager, Cloud SQL, Compute Engine, firewall, DNS
+./deploy.sh           # Pull code on CE, write .env from secrets, run migrations, start service
+```
+
+### Nuke and recreate
+
+```bash
+cd infra
+./teardown.sh                              # Deletes the entire GCP project (confirms interactively)
+./create-project.sh && ./setup.sh && ./deploy.sh   # Recreate from zero
+```
+
+### Deploy updates
+
+```bash
+cd infra
+./deploy.sh           # Pulls latest code, syncs deps, re-writes .env, runs migrations, restarts
+```
+
 ## Configuration
 
 All config is via environment variables (prefixed `BSKY_`) or `.env` file. See `.env.example` for available options and `src/bluesky_feed_consumer/config.py` for defaults.
