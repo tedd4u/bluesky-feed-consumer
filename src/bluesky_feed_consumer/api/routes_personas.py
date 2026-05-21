@@ -32,6 +32,8 @@ router = APIRouter(prefix="/personas", tags=["personas"], dependencies=[RequireA
 class CreatePersonaRequest(BaseModel):
     handle: str
 
+    model_config = ConfigDict(json_schema_extra={"examples": [{"handle": "elienyc.bsky.social"}]})
+
 
 class PersonaResponse(BaseModel):
     handle: str
@@ -52,6 +54,10 @@ class PersonaStatusResponse(PersonaResponse):
 
 class ChatMessageRequest(BaseModel):
     message: str
+
+    model_config = ConfigDict(
+        json_schema_extra={"examples": [{"message": "Hey! What have you been up to lately?"}]}
+    )
 
 
 class ChatMessageResponse(BaseModel):

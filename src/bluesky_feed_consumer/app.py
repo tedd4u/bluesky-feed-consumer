@@ -72,13 +72,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Bluesky Feed Consumer", lifespan=lifespan)
+    app = FastAPI(
+        title="Bluesky Feed Consumer",
+        description=(
+            "Real-time Bluesky firehose consumer with rolling statistics "
+            "and AI persona chat. Stats are computed in configurable time "
+            "windows and streamed live via SSE. Persona chat lets you have "
+            "conversations with AI impersonations of Bluesky accounts, "
+            "powered by Claude."
+        ),
+        version="0.1.0",
+        lifespan=lifespan,
+    )
     app.include_router(stats_router)
     app.include_router(personas_router)
     app.include_router(sse_router)
 
-    @app.get("/health")
+    @app.get("/health", tags=["system"])
     async def health() -> dict[str, str]:
+        """Service health check."""
         return {"status": "ok"}
 
     return app

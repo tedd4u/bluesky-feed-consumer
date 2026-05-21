@@ -24,9 +24,13 @@ def _get_processor(request: Request) -> StatsProcessor:
 async def get_stats(
     window: int,
     request: Request,
-    top_n: int = Query(default=10, ge=1, le=50),
+    top_n: int = Query(default=10, ge=1, le=50, description="Number of top items to return (max 50)"),
 ) -> dict[str, object]:
-    """Return current metrics for a specific time window."""
+    """Return current metrics for a specific time window.
+
+    Window is specified in seconds (e.g., 60 for 1-minute, 300 for 5-minute).
+    Returns post/like/repost counts, top-N lists, and language breakdown.
+    """
     processor = _get_processor(request)
 
     if window not in processor.windows:
