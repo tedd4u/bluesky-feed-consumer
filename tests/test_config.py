@@ -1,3 +1,5 @@
+import re
+
 from bluesky_feed_consumer.config import Settings
 
 
@@ -22,3 +24,30 @@ def test_settings_from_env(monkeypatch):
     assert settings.port == 9000
     assert settings.api_key == "my-secret"
     assert settings.window_sizes == [30, 120]
+
+
+class TestClaudeModelConfig:
+    """Validate the Claude model name is a well-formed Anthropic model ID."""
+
+    # Valid Anthropic model name patterns:
+    #   claude-{tier}-{version}  e.g. claude-sonnet-4-6
+    #   claude-{tier}-{version}-{date}  e.g. claude-sonnet-4-5-20250929
+    _MODEL_PATTERN = re.compile(
+        r"^claude-[a-z]+-\d+(-\d+)?(-\d{8})?$"
+    )
+
+    def test_default_model_matches_anthropic_format(self):
+        settings = Settings()
+        assert self._MODEL_PATTERN.match(settings.claude_model), (
+            f"Model name '{settings.claude_model}' doesn't match expected "
+            f"Anthropic format (claude-{{tier}}-{{version}}[-{{date}}])"
+        )
+
+    def test_model_name_not_empty(self):
+        settings = Settings()
+        assert settings.claude_model, "claude_model must not be empty"
+
+    def test_model_name_overridable_via_env(self, monkeypatch):
+        monkeypatch.setenv("BSKY_CLAUDE_MODEL", "claude-haiku-3-5-20241022")
+        settings = Settings()
+        assert settings.claude_model == "claude-haiku-3-5-20241022"
