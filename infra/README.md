@@ -48,6 +48,7 @@ On subsequent runs, `setup.sh` will update the A record if the CE instance's IP 
 | `create-project.sh` | Create GCP project, link billing, enable APIs | Yes |
 | `setup.sh` | Secret Manager, VPC peering, Cloud SQL, CE, firewall, DNS | Yes |
 | `deploy.sh` | SSH to CE, pull code, sync deps, write .env, migrate, restart | Yes |
+| `monitoring.sh` | Uptime check, Slack alerts, alert policies, dashboard | Yes |
 | `teardown.sh` | Delete entire GCP project (interactive confirmation) | N/A |
 
 ## Logs
@@ -63,6 +64,47 @@ logs/
 ```
 
 Quick access to most recent run: `cat logs/latest-deploy.log`
+
+## Monitoring & Alerting
+
+### Prerequisites
+
+Add `SLACK_WEBHOOK_URL` to `.env.infra`:
+
+```bash
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T.../B.../...
+```
+
+### What it creates
+
+| Resource | Purpose |
+|----------|---------|
+| Uptime check | Hits `/health` every 60s from multiple regions |
+| Notification channel | Slack webhook for alert delivery |
+| Alert: Service Down | Fires when health check fails for > 60s |
+| Alert: CE CPU High | Fires when CE CPU > 80% for 5 min |
+| Alert: SQL CPU High | Fires when Cloud SQL CPU > 80% for 5 min |
+| Alert: SQL Storage High | Fires when Cloud SQL disk > 80% for 5 min |
+| Dashboard | 6-panel view: CE CPU/network, SQL CPU/disk/connections, uptime latency |
+
+### Application metrics
+
+The service exposes a `/metrics` endpoint (no auth required) returning:
+
+- `firehose_events_total` — total events processed since boot
+- `firehose_events_per_second` — recent throughput
+- `api_request_count` — total API requests served
+- `api_request_errors` — 5xx responses
+- `api_avg_latency_ms` — mean request latency
+- `sse_connections` — active SSE client count
+
+### Running
+
+```bash
+./monitoring.sh
+```
+
+Safe to re-run. Skips resources that already exist.
 
 ## Secrets Flow
 

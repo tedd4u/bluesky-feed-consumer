@@ -38,3 +38,14 @@ async def test_personas_requires_auth(client):
 async def test_personas_rejects_bad_key(client):
     resp = await client.post("/personas", headers={"x-api-key": "bad"})
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_metrics_no_auth(client):
+    """Metrics endpoint should be public (no auth required)."""
+    resp = await client.get("/metrics")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "firehose_events_total" in data
+    assert "api_request_count" in data
+    assert "sse_connections" in data
