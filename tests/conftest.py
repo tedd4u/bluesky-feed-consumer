@@ -6,6 +6,7 @@ from bluesky_feed_consumer.app import create_app
 from bluesky_feed_consumer.config import Settings, get_settings
 from bluesky_feed_consumer.db import get_session
 from bluesky_feed_consumer.models import Base
+from bluesky_feed_consumer.stats.processor import StatsProcessor
 
 
 @pytest.fixture
@@ -38,6 +39,9 @@ def app(settings, db_session):
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: settings
     application.dependency_overrides[get_session] = lambda: db_session
+    # Wire processor into app state so stats endpoints work
+    application.state.processor = StatsProcessor(settings)
+    application.state.settings = settings
     return application
 
 

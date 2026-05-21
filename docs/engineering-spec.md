@@ -1023,5 +1023,7 @@ Each phase includes its own tests. A phase is not complete until `make check` pa
 23. GCP infrastructure setup (CE, Cloud SQL, Secret Manager, firewall)
 24. systemd service + deploy.sh script
 25. **CD: extend GitHub Actions to deploy on merge to `master`** — if CI passes, SSH to CE and run `git pull && uv sync --frozen && sudo systemctl restart bsky-server` (continuous deployment, no manual deploy step)
-26. Cloud Monitoring dashboard
+26. Cloud Monitoring dashboard (defined as JSON, deployed via `gcloud monitoring dashboards create`)
 27. **Tests**: end-to-end smoke test on GCP (connect firehose, verify stats flow, register persona, send chat message)
+
+*Infrastructure is managed via shell scripts + `gcloud` CLI, not Terraform. The infra footprint (one CE instance, one Cloud SQL, one Secret Manager secret) doesn't justify a separate IaC tool.*
