@@ -11,3 +11,5 @@ dist/
 .coverage
 htmlcov/
 infra/logs/
+.vscode/
+.DS_Store
