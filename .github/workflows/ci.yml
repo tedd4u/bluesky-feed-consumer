@@ -5,6 +5,7 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
   check:
@@ -28,3 +29,28 @@ jobs:
 
       - name: Test
         run: make test
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Compute Engine
+        env:
+          CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
+        run: |
+          mkdir -p ~/.ssh
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+          printf 'PROJECT_ID=%s\nZONE=%s\n' '${{ vars.GCP_PROJECT_ID }}' '${{ vars.GCP_ZONE }}' > infra/.env.infra
+          cd infra && ./deploy.sh
