@@ -1,6 +1,9 @@
 """Tests for persona CRUD API endpoints."""
 
 import pytest
+from sqlalchemy import select
+
+from bluesky_feed_consumer.models.chat import ChatMessage, MessageRole, Persona
 
 AUTH = {"x-api-key": "test-key"}
 
@@ -30,7 +33,9 @@ async def test_list_personas(client):
     resp = await client.get("/personas", headers=AUTH)
     assert resp.status_code == 200
     data = resp.json()
-    assert len(data) >= 2
+    handles = {p["handle"] for p in data}
+    assert "a.bsky.social" in handles
+    assert "b.bsky.social" in handles
 
 
 @pytest.mark.asyncio
@@ -72,7 +77,26 @@ async def test_get_empty_chat_history(client):
 
 
 @pytest.mark.asyncio
-async def test_delete_chat_history(client):
+async def test_delete_chat_history(client, db_session):
     await client.post("/personas", json={"handle": "del.bsky.social"}, headers=AUTH)
+
+    # Seed a message directly in DB so there's something to delete
+    result = await db_session.execute(
+        select(Persona).where(Persona.handle == "del.bsky.social")
+    )
+    persona = result.scalar_one()
+    db_session.add(
+        ChatMessage(persona_id=persona.id, role=MessageRole.USER, content="Hello")
+    )
+    await db_session.commit()
+
+    # Verify message exists
+    resp = await client.get("/personas/del.bsky.social/chat", headers=AUTH)
+    assert len(resp.json()["messages"]) == 1
+
+    # Delete and verify empty
     resp = await client.delete("/personas/del.bsky.social/chat", headers=AUTH)
     assert resp.status_code == 204
+
+    resp = await client.get("/personas/del.bsky.social/chat", headers=AUTH)
+    assert resp.json()["messages"] == []

@@ -148,6 +148,10 @@ class TestStatsProcessor:
         windows = stats["windows"]
         assert isinstance(windows, dict)
         assert "60" in windows
+        # Verify the ingested event is reflected in the metrics
+        w60 = windows["60"]
+        assert w60["metrics"]["post_count"] == 1
+        assert w60["metrics"]["like_count"] == 0
 
     def test_deltas_computed_after_two_rotations(self) -> None:
         proc = StatsProcessor(_settings())

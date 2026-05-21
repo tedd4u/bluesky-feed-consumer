@@ -112,6 +112,7 @@ class TestParsePost:
         event = parse_event(raw)
         assert event is not None
         assert event.kind == "quote"
+        assert event.quoted_ref == "at://did:plc:quoted/app.bsky.feed.post/m1"
 
 
 class TestParseLikeRepost:
@@ -123,6 +124,8 @@ class TestParseLikeRepost:
         event = parse_event(raw)
         assert event is not None
         assert event.kind == "like"
+        assert event.did == "did:plc:test123"
+        assert "app.bsky.feed.like" in event.uri
 
     def test_repost(self) -> None:
         raw = _make_msg(
@@ -132,6 +135,8 @@ class TestParseLikeRepost:
         event = parse_event(raw)
         assert event is not None
         assert event.kind == "repost"
+        assert event.did == "did:plc:test123"
+        assert "app.bsky.feed.repost" in event.uri
 
 
 class TestParseEdgeCases:

@@ -122,6 +122,7 @@ class TestContextSelector:
         posts = [_post("post", days_ago=i) for i in range(20)]
         selected = selector.select(posts)
         assert len(selected) == 10
+        assert all(p.post_type != PostType.REPLY for p in selected)
 
 
 class TestFormatForPrompt:
