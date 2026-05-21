@@ -860,11 +860,13 @@ Containerization (Dockerfile) will be added later when needed.
 
 ### Cloud SQL Setup
 
-- **Instance**: db-f1-micro (shared vCPU, 0.6GB RAM), PostgreSQL 16
+- **Instance**: db-f1-micro (shared vCPU, 0.6GB RAM), PostgreSQL 16, Enterprise edition
 - **Region**: us-central1 (same as CE)
-- **Connection**: Private IP within VPC (no public IP needed)
+- **Connection**: Private IP within VPC (no public IP exposed)
 - **Storage**: 10GB SSD (auto-resize)
 - **Backups**: Automated daily (default)
+
+**Private IP decision**: Cloud SQL is configured with `--no-assign-ip` (private IP only) and connects to the CE instance over VPC peering via the Service Networking API. This means the database is unreachable from the public internet — only resources within the same VPC (i.e., the CE instance) can connect. The tradeoff is slightly more complex setup (requires `servicenetworking.googleapis.com` API + VPC peering allocation), but eliminates an entire attack surface. For a demo project this is still worthwhile because the setup is one-time and fully scripted.
 
 ### Estimated Monthly Cost
 

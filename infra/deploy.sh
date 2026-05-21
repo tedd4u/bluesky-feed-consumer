@@ -17,11 +17,33 @@ DB_IP=$(gcloud sql instances describe bsky-db --format='value(ipAddresses[0].ipA
 gcloud compute ssh bsky-server --zone="${ZONE}" --project="${PROJECT_ID}" --command="
 set -e
 
+# Ensure deploy key exists for GitHub access
+if [ ! -f ~/.ssh/deploy_key ]; then
+    ssh-keygen -t ed25519 -f ~/.ssh/deploy_key -N '' -C 'bsky-server-deploy-key'
+    cat >> ~/.ssh/config << 'SSHEOF'
+Host github.com
+    IdentityFile ~/.ssh/deploy_key
+    StrictHostKeyChecking accept-new
+SSHEOF
+    chmod 600 ~/.ssh/config
+    echo ''
+    echo '========================================='
+    echo 'DEPLOY KEY (add to GitHub repo settings):'
+    echo '========================================='
+    cat ~/.ssh/deploy_key.pub
+    echo '========================================='
+    echo 'Go to: https://github.com/tedd4u/bluesky-feed-consumer/settings/keys'
+    echo 'Click \"Add deploy key\", paste the key above, leave read-only.'
+    echo 'Then re-run this script.'
+    echo '========================================='
+    exit 1
+fi
+
 # Ensure repo is cloned
 if [ ! -d /opt/bluesky-feed-consumer ]; then
     sudo mkdir -p /opt/bluesky-feed-consumer
     sudo chown \$(whoami) /opt/bluesky-feed-consumer
-    git clone https://github.com/tedd4u/bluesky-feed-consumer.git /opt/bluesky-feed-consumer
+    git clone git@github.com:tedd4u/bluesky-feed-consumer.git /opt/bluesky-feed-consumer
 fi
 
 cd /opt/bluesky-feed-consumer

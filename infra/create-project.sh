@@ -5,6 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib-log.sh"
 source "${SCRIPT_DIR}/.env.infra" 2>/dev/null || { echo "ERROR: Copy .env.infra.example to .env.infra and fill in values."; exit 1; }
 
 : "${BILLING_ACCOUNT_ID:?Set BILLING_ACCOUNT_ID in .env.infra}"
@@ -28,6 +29,7 @@ gcloud services enable \
     dns.googleapis.com \
     monitoring.googleapis.com \
     logging.googleapis.com \
+    servicenetworking.googleapis.com \
     --project="${PROJECT_ID}"
 
 echo ""

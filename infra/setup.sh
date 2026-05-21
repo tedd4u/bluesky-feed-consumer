@@ -5,14 +5,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib-log.sh"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 source "${SCRIPT_DIR}/.env.infra" 2>/dev/null || { echo "ERROR: .env.infra not found."; exit 1; }
+source "${REPO_ROOT}/.env" 2>/dev/null || { echo "ERROR: .env not found (needed for API keys)."; exit 1; }
 
 : "${PROJECT_ID:?Set PROJECT_ID in .env.infra}"
 : "${REGION:=us-central1}"
 : "${ZONE:=us-central1-a}"
 : "${DB_PASSWORD:?Set DB_PASSWORD in .env.infra}"
-: "${BSKY_API_KEY:?Set BSKY_API_KEY in .env.infra}"
-: "${BSKY_ANTHROPIC_API_KEY:?Set BSKY_ANTHROPIC_API_KEY in .env.infra}"
+: "${BSKY_API_KEY:?Set BSKY_API_KEY in .env}"
+: "${BSKY_ANTHROPIC_API_KEY:?Set BSKY_ANTHROPIC_API_KEY in .env}"
 
 gcloud config set project "${PROJECT_ID}"
 
@@ -26,11 +30,29 @@ echo "${BSKY_API_KEY}" | gcloud secrets versions add bsky-api-key --data-file=-
 echo "${BSKY_ANTHROPIC_API_KEY}" | gcloud secrets versions add bsky-anthropic-api-key --data-file=-
 echo "${DB_PASSWORD}" | gcloud secrets versions add bsky-db-password --data-file=-
 
+# --- VPC Peering for Cloud SQL private IP ---
+echo "==> Setting up private services access (VPC peering)"
+gcloud compute addresses describe google-managed-services-default --global --project="${PROJECT_ID}" &>/dev/null || \
+gcloud compute addresses create google-managed-services-default \
+    --global \
+    --purpose=VPC_PEERING \
+    --prefix-length=16 \
+    --network=default \
+    --project="${PROJECT_ID}"
+
+gcloud services vpc-peerings list --network=default --project="${PROJECT_ID}" 2>/dev/null | grep -q servicenetworking.googleapis.com || \
+gcloud services vpc-peerings connect \
+    --service=servicenetworking.googleapis.com \
+    --ranges=google-managed-services-default \
+    --network=default \
+    --project="${PROJECT_ID}"
+
 # --- Cloud SQL ---
 echo "==> Creating Cloud SQL instance"
 gcloud sql instances describe bsky-db --project="${PROJECT_ID}" &>/dev/null || \
 gcloud sql instances create bsky-db \
     --database-version=POSTGRES_16 \
+    --edition=ENTERPRISE \
     --tier=db-f1-micro \
     --region="${REGION}" \
     --storage-size=10GB \
