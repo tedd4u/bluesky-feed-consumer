@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bluesky Feed Consumer - Wireframes v2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .page-title {
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 24px;
+    color: #ccc;
+  }
+  .page-subtitle {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 14px;
+    color: #666;
+  }
+
+  .wireframe-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    justify-content: center;
+    align-items: flex-start;
+    margin-bottom: 60px;
+  }
+
+  .row-label {
+    width: 100%;
+    text-align: center;
+    font-size: 16px;
+    color: #888;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+  }
+
+  .screen-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .screen-label {
+    font-size: 13px;
+    color: #888;
+    text-align: center;
+    max-width: 375px;
+    line-height: 1.4;
+  }
+
+  .phone-frame {
+    width: 375px;
+    height: 812px;
+    background: #000;
+    border-radius: 40px;
+    padding: 20px 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    border-radius: 28px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .status-bar {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    color: #000;
+    flex-shrink: 0;
+  }
+
+  .nav-header {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border-bottom: 1px solid #e5e5e5;
+    background: #fff;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .nav-header h1 { font-size: 17px; font-weight: 600; color: #000; }
+  .nav-back { position: absolute; left: 16px; color: #0085ff; font-size: 16px; cursor: pointer; }
+  .nav-hamburger { position: absolute; left: 16px; font-size: 20px; color: #333; cursor: pointer; }
+  .nav-dots { position: absolute; right: 16px; font-size: 18px; color: #333; cursor: pointer; letter-spacing: 2px; }
+
+  /* Bluesky actual tab bar: Home, Explore, Chats, Notifications, Profile */
+  .tab-bar {
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    border-top: 1px solid #e5e5e5;
+    background: #fff;
+    padding: 0 10px;
+    flex-shrink: 0;
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    color: #687684;
+  }
+  .tab-item.active { color: #0085ff; }
+  .tab-icon {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    background: #fff;
+  }
+
+  /* ===== Hamburger Flyout ===== */
+  .flyout-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 20;
+  }
+  .flyout-menu {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 280px;
+    background: #fff;
+    z-index: 21;
+    padding: 60px 0 20px;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+  }
+  .flyout-item {
+    padding: 14px 24px;
+    font-size: 16px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .flyout-item.new-item {
+    color: #0085ff;
+    font-weight: 500;
+    background: #f0f7ff;
+  }
+  .flyout-icon { font-size: 18px; width: 24px; text-align: center; }
+  .flyout-divider {
+    height: 1px;
+    background: #e5e5e5;
+    margin: 8px 24px;
+  }
+  .flyout-badge {
+    font-size: 9px;
+    font-weight: 700;
+    background: #0085ff;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: auto;
+  }
+
+  /* ===== Stats Dashboard ===== */
+  .stats-section {
+    padding: 16px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .stats-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #687684;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .stat-card {
+    background: #f7f9fa;
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+  .stat-value { font-size: 20px; font-weight: 700; color: #000; }
+  .stat-label { font-size: 11px; color: #687684; margin-top: 2px; }
+  .stat-delta { font-size: 10px; margin-top: 2px; }
+  .stat-delta.up { color: #00ba7c; }
+  .stat-delta.down { color: #ff6b6b; }
+
+  .velocity-chart {
+    height: 80px;
+    background: linear-gradient(180deg, rgba(0,133,255,0.05) 0%, rgba(0,133,255,0.02) 100%);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e8f4ff;
+  }
+  .velocity-line {
+    position: absolute;
+    bottom: 10px; left: 10px; right: 10px;
+    height: 40px;
+  }
+  .velocity-line svg { width: 100%; height: 100%; }
+  .velocity-current {
+    text-align: right;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0085ff;
+    margin-top: 6px;
+  }
+
+  .lang-bar {
+    display: flex;
+    height: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .lang-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .lang-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+  .lang-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #444; }
+  .lang-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Segment control for Top Liked / Top Reposted */
+  .segment-control {
+    display: flex;
+    background: #f0f0f0;
+    border-radius: 8px;
+    padding: 2px;
+    margin-bottom: 12px;
+  }
+  .segment-option {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #687684;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .segment-option.active {
+    background: #fff;
+    color: #000;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .top-list { list-style: none; }
+  .top-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .top-rank { font-size: 14px; font-weight: 700; color: #0085ff; width: 20px; text-align: center; flex-shrink: 0; padding-top: 2px; }
+  .top-content { flex: 1; min-width: 0; }
+  .top-author { font-size: 13px; font-weight: 600; color: #000; }
+  .top-text { font-size: 13px; color: #333; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-meta { font-size: 11px; color: #687684; margin-top: 4px; }
+
+  .more-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #0085ff;
+    cursor: pointer;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    margin-top: 12px;
+    background: #fafafa;
+  }
+
+  .window-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid #e5e5e5;
+    flex-shrink: 0;
+  }
+  .window-tab {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #687684;
+    border-bottom: 2px solid transparent;
+  }
+  .window-tab.active { color: #0085ff; border-bottom-color: #0085ff; }
+
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    margin: 12px 16px 0;
+    background: #f0fff4;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #00ba7c;
+    font-weight: 500;
+    width: fit-content;
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: #00ba7c;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ===== Profile ===== */
+  .profile-header {
+    text-align: center;
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  .profile-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0085ff, #00ba7c);
+    margin: 0 auto 12px;
+  }
+  .profile-name { font-size: 18px; font-weight: 700; color: #000; }
+  .profile-handle { font-size: 14px; color: #687684; margin-top: 2px; }
+  .profile-bio { font-size: 14px; color: #333; margin-top: 8px; line-height: 1.4; }
+
+  .menu-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 10;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 80px;
+  }
+  .menu-sheet {
+    background: #fff;
+    border-radius: 16px;
+    width: 90%;
+    overflow: hidden;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  }
+  .menu-section { border-bottom: 8px solid #f0f0f0; }
+  .menu-section:last-child { border-bottom: none; }
+  .menu-item {
+    padding: 16px 20px;
+    font-size: 16px;
+    color: #000;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item.highlight { color: #0085ff; font-weight: 500; }
+
+  /* ===== Chat Inbox ===== */
+  .chat-list { list-style: none; }
+  .chat-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f5f5f5;
+    position: relative;
+  }
+  .chat-avatar { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; }
+  .chat-info { flex: 1; min-width: 0; }
+  .chat-name { font-size: 15px; font-weight: 600; color: #000; display: flex; align-items: center; gap: 6px; }
+  .ai-badge { font-size: 9px; font-weight: 700; background: #0085ff; color: #fff; padding: 2px 5px; border-radius: 4px; }
+  .chat-preview { font-size: 13px; color: #687684; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-time { font-size: 12px; color: #687684; flex-shrink: 0; }
+
+  /* Swipe delete hint */
+  .swipe-hint {
+    position: relative;
+    overflow: hidden;
+  }
+  .swipe-hint .chat-list-item {
+    transform: translateX(-70px);
+  }
+  .swipe-delete {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 70px;
+    background: #ff3b30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 20px;
+  }
+
+  /* ===== Chat Conversation ===== */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #f7f9fa;
+  }
+  .message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  .message.sent {
+    align-self: flex-end;
+    background: #0085ff;
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .message.received {
+    align-self: flex-start;
+    background: #fff;
+    color: #000;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  .message-input-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid #e5e5e5;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .message-input {
+    flex: 1;
+    background: #f7f9fa;
+    border: 1px solid #e5e5e5;
+    border-radius: 20px;
+    padding: 10px 16px;
+    font-size: 15px;
+    color: #999;
+  }
+  .send-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: #0085ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .typing-indicator {
+    align-self: flex-start;
+    background: #fff;
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    padding: 12px 16px;
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+  .typing-dot {
+    width: 6px; height: 6px;
+    background: #999;
+    border-radius: 50%;
+    animation: typingBounce 1.4s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+
+  .debug-info {
+    font-size: 10px;
+    color: #aaa;
+    padding: 4px 16px;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    flex-shrink: 0;
+  }
+
+  .persona-chat-header { display: flex; align-items: center; gap: 10px; }
+  .persona-chat-avatar { width: 32px; height: 32px; border-radius: 50%; }
+  .persona-chat-name { font-size: 16px; font-weight: 600; color: #000; }
+  .persona-chat-subtitle { font-size: 11px; color: #687684; }
+
+  /* Chat three-dot dropdown */
+  .chat-dropdown {
+    position: absolute;
+    top: 48px;
+    right: 16px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    overflow: hidden;
+    z-index: 10;
+    width: 200px;
+  }
+  .chat-dropdown-item {
+    padding: 14px 16px;
+    font-size: 15px;
+    color: #000;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .chat-dropdown-item:last-child { border-bottom: none; }
+  .chat-dropdown-item.destructive { color: #ff3b30; }
+</style>
+</head>
+<body>
+
+<h1 class="page-title">Bluesky Feed Consumer - UI Wireframes v2</h1>
+<p class="page-subtitle">Navigation: Stats and AI Chat accessed via hamburger flyout menu (not bottom tab bar)</p>
+
+<div class="wireframe-row">
+  <div class="row-label">Navigation</div>
+
+  <!-- SCREEN 0: Hamburger Flyout -->
+  <div class="screen-container">
+    <div class="phone-frame">
+      <div class="phone-screen" style="position:relative;">
+        <div class="status-bar"><span>9:41</span><span>100%</span></div>
+        <div class="nav-header">
+          <span class="nav-hamburger">&#9776;</span>
+          <h1>Home</h1>
+        </div>
+        <div class="content" style="background:#f7f9fa;"></div>
+        <div class="tab-bar">
+          <div class="tab-item active"><div class="tab-icon">&#x1F3E0;</div><span>Home</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F50D;</div><span>Explore</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F4AC;</div><span>Chats</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F514;</div><span>Notifs</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F464;</div><span>Profile</span></div>
+        </div>
+
+        <!-- Flyout overlay -->
+        <div class="flyout-overlay"></div>
+        <div class="flyout-menu">
+          <div class="flyout-item"><span class="flyout-icon">&#x1F50D;</span> Explore</div>
+          <div class="flyout-item"><span class="flyout-icon">&#x1F3E0;</span> Home</div>
+          <div class="flyout-item"><span class="flyout-icon">&#x1F4AC;</span> Chat</div>
+          <div class="flyout-item new-item"><span class="flyout-icon">&#x1F916;</span> AI Chat <span class="flyout-badge">NEW</span></div>
+          <div class="flyout-item"><span class="flyout-icon">&#x1F514;</span> Notifications</div>
+          <div class="flyout-item new-item"><span class="flyout-icon">&#x1F4CA;</span> Stats <span class="flyout-badge">NEW</span></div>
+          <div class="flyout-divider"></div>
+          <div class="flyout-item"><span class="flyout-icon">&#x1F4E1;</span> Feeds</div>
+          <div class="flyout-item"><span class="flyout-icon">&#x1F4CB;</span> Lists</div>
+          <div class="flyout-item"><span class="flyout-icon">&#x1F516;</span> Saved</div>
+          <div class="flyout-divider"></div>
+          <div class="flyout-item"><span class="flyout-icon">&#x1F464;</span> Profile</div>
+          <div class="flyout-item"><span class="flyout-icon">&#x2699;</span> Settings</div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label"><strong>Screen 0:</strong> Hamburger Flyout Menu<br>"AI Chat" added below Chat, "Stats" added below Notifications. Both marked NEW.</div>
+  </div>
+</div>
+
+<div class="wireframe-row">
+  <div class="row-label">Stats Dashboard</div>
+
+  <!-- SCREEN 1: Stats Dashboard -->
+  <div class="screen-container">
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="status-bar"><span>9:41</span><span>100%</span></div>
+        <div class="nav-header">
+          <span class="nav-hamburger">&#9776;</span>
+          <h1>Live Stats</h1>
+        </div>
+
+        <div class="window-tabs">
+          <div class="window-tab active">1 min</div>
+          <div class="window-tab">5 min</div>
+          <div class="window-tab">10 min</div>
+        </div>
+
+        <div class="content">
+          <div class="live-indicator">
+            <div class="live-dot"></div>
+            Updated 0.4s ago
+          </div>
+
+          <div class="stats-section">
+            <div class="stats-section-title">Last 1 Minute</div>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-value">2.4K</div>
+                <div class="stat-label">Posts</div>
+                <div class="stat-delta up">+12% vs prev</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">1.8K</div>
+                <div class="stat-label">Users</div>
+                <div class="stat-delta up">+8% vs prev</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">5.1K</div>
+                <div class="stat-label">Likes</div>
+                <div class="stat-delta up">+3% vs prev</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">892</div>
+                <div class="stat-label">Reposts</div>
+                <div class="stat-delta down">-2% vs prev</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">1.2K</div>
+                <div class="stat-label">Replies</div>
+                <div class="stat-delta up">+5% vs prev</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">42/s</div>
+                <div class="stat-label">Velocity</div>
+                <div class="stat-delta up">+1% vs prev</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="stats-section-title">Posting Velocity (1 hour)</div>
+            <div class="velocity-chart">
+              <div class="velocity-line">
+                <svg viewBox="0 0 300 40" preserveAspectRatio="none">
+                  <polyline fill="none" stroke="#0085ff" stroke-width="1.5"
+                    points="0,30 10,28 20,25 30,27 40,20 50,22 60,18 70,15 80,20 90,22 100,18 110,15 120,12 130,15 140,18 150,14 160,10 170,12 180,15 190,18 200,14 210,10 220,8 230,12 240,15 250,10 260,8 270,5 280,8 290,10 300,7"/>
+                  <polyline fill="rgba(0,133,255,0.1)" stroke="none"
+                    points="0,40 0,30 10,28 20,25 30,27 40,20 50,22 60,18 70,15 80,20 90,22 100,18 110,15 120,12 130,15 140,18 150,14 160,10 170,12 180,15 190,18 200,14 210,10 220,8 230,12 240,15 250,10 260,8 270,5 280,8 290,10 300,7 300,40"/>
+                </svg>
+              </div>
+            </div>
+            <div class="velocity-current">43.2 posts/sec</div>
+          </div>
+
+          <div class="stats-section">
+            <div class="stats-section-title">Languages</div>
+            <div class="lang-bar">
+              <div class="lang-segment" style="width:38%;background:#0085ff">EN</div>
+              <div class="lang-segment" style="width:18%;background:#7c3aed">JA</div>
+              <div class="lang-segment" style="width:12%;background:#f59e0b">PT</div>
+              <div class="lang-segment" style="width:9%;background:#00ba7c">ES</div>
+              <div class="lang-segment" style="width:7%;background:#ec4899">DE</div>
+              <div class="lang-segment" style="width:16%;background:#94a3b8">...</div>
+            </div>
+            <div class="lang-legend">
+              <div class="lang-legend-item"><div class="lang-dot" style="background:#0085ff"></div>English 38%</div>
+              <div class="lang-legend-item"><div class="lang-dot" style="background:#7c3aed"></div>Japanese 18%</div>
+              <div class="lang-legend-item"><div class="lang-dot" style="background:#f59e0b"></div>Portuguese 12%</div>
+              <div class="lang-legend-item"><div class="lang-dot" style="background:#00ba7c"></div>Spanish 9%</div>
+              <div class="lang-legend-item"><div class="lang-dot" style="background:#ec4899"></div>German 7%</div>
+              <div class="lang-legend-item"><div class="lang-dot" style="background:#94a3b8"></div>Other 16%</div>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="segment-control">
+              <div class="segment-option active">Top Liked</div>
+              <div class="segment-option">Top Reposted</div>
+            </div>
+            <ul class="top-list">
+              <li class="top-item">
+                <span class="top-rank">1</span>
+                <div class="top-content">
+                  <div class="top-author">@elonjet.bsky.social</div>
+                  <div class="top-text">Just landed at SFO after a quick hop from...</div>
+                  <div class="top-meta">847 likes &middot; 23s ago</div>
+                </div>
+              </li>
+              <li class="top-item">
+                <span class="top-rank">2</span>
+                <div class="top-content">
+                  <div class="top-author">@newscientist.bsky.social</div>
+                  <div class="top-text">Breaking: New study reveals unexpected link...</div>
+                  <div class="top-meta">612 likes &middot; 41s ago</div>
+                </div>
+              </li>
+              <li class="top-item">
+                <span class="top-rank">3</span>
+                <div class="top-content">
+                  <div class="top-author">@funny.bsky.social</div>
+                  <div class="top-text">me trying to explain to my cat why I need the...</div>
+                  <div class="top-meta">489 likes &middot; 18s ago</div>
+                </div>
+              </li>
+              <li class="top-item">
+                <span class="top-rank">4</span>
+                <div class="top-content">
+                  <div class="top-author">@techcrunch.bsky.social</div>
+                  <div class="top-text">Apple just announced a new chip architecture...</div>
+                  <div class="top-meta">421 likes &middot; 52s ago</div>
+                </div>
+              </li>
+              <li class="top-item">
+                <span class="top-rank">5</span>
+                <div class="top-content">
+                  <div class="top-author">@cooking.bsky.social</div>
+                  <div class="top-text">This 10-minute pasta recipe changed my life...</div>
+                  <div class="top-meta">398 likes &middot; 38s ago</div>
+                </div>
+              </li>
+            </ul>
+            <div class="more-btn">Show 5 more</div>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <div class="tab-item"><div class="tab-icon">&#x1F3E0;</div><span>Home</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F50D;</div><span>Explore</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F4AC;</div><span>Chats</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F514;</div><span>Notifs</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F464;</div><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label"><strong>Screen 1:</strong> Stats Dashboard<br>Period-over-period deltas (server-computed). Sparkline with live value below (2s updates). Segment control for Top Liked / Top Reposted. Shows 5 items + "More" button.</div>
+  </div>
+</div>
+
+<div class="wireframe-row">
+  <div class="row-label">Persona Chat Flow</div>
+
+  <!-- SCREEN 2: Profile Three-Dot Menu -->
+  <div class="screen-container">
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="status-bar"><span>9:41</span><span>100%</span></div>
+        <div class="nav-header">
+          <span class="nav-back">&larr;</span>
+          <h1>Profile</h1>
+          <span class="nav-dots">&middot;&middot;&middot;</span>
+        </div>
+
+        <div class="content" style="position:relative;">
+          <div class="profile-header">
+            <div class="profile-avatar"></div>
+            <div class="profile-name">Paul Graham</div>
+            <div class="profile-handle">@paulg.bsky.social</div>
+            <div class="profile-bio">Co-founder of YC. Writer. Hacker. Lisp enthusiast.</div>
+          </div>
+
+          <div class="menu-overlay">
+            <div class="menu-sheet">
+              <div class="menu-section">
+                <div class="menu-item"><span>&#x1F517;</span> Share via&hellip;</div>
+                <div class="menu-item"><span>&#x1F50D;</span> Search posts</div>
+              </div>
+              <div class="menu-section">
+                <div class="menu-item"><span>&#x2B50;</span> Add to starter packs</div>
+                <div class="menu-item"><span>&#x1F4CB;</span> Add to lists</div>
+                <div class="menu-item highlight"><span>&#x1F916;</span> Chat with AI Paul Graham</div>
+                <div class="menu-item"><span>&#x1F534;</span> Go live</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <div class="tab-item"><div class="tab-icon">&#x1F3E0;</div><span>Home</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F50D;</div><span>Explore</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F4AC;</div><span>Chats</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F514;</div><span>Notifs</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F464;</div><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label"><strong>Screen 2:</strong> Profile Three-Dot Menu<br>Matches actual app menu sections. "Chat with AI" between "Add to lists" and "Go live".</div>
+  </div>
+
+  <!-- SCREEN 3: Chat Inbox -->
+  <div class="screen-container">
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="status-bar"><span>9:41</span><span>100%</span></div>
+        <div class="nav-header">
+          <span class="nav-hamburger">&#9776;</span>
+          <h1>AI Chats</h1>
+        </div>
+
+        <div class="content">
+          <ul class="chat-list">
+            <li class="chat-list-item">
+              <div class="chat-avatar" style="background:linear-gradient(135deg,#0085ff,#00ba7c)"></div>
+              <div class="chat-info">
+                <div class="chat-name">Paul Graham <span class="ai-badge">AI</span></div>
+                <div class="chat-preview">The best essays come from genuine curiosity about...</div>
+              </div>
+              <div class="chat-time">2m</div>
+            </li>
+
+            <!-- Swipe-to-delete demo row -->
+            <li class="swipe-hint">
+              <div class="chat-list-item">
+                <div class="chat-avatar" style="background:linear-gradient(135deg,#7c3aed,#ec4899)"></div>
+                <div class="chat-info">
+                  <div class="chat-name">DHH <span class="ai-badge">AI</span></div>
+                  <div class="chat-preview">Ruby on Rails is still the best framework for...</div>
+                </div>
+                <div class="chat-time">1h</div>
+              </div>
+              <div class="swipe-delete">&#x1F5D1;</div>
+            </li>
+
+            <li class="chat-list-item">
+              <div class="chat-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)"></div>
+              <div class="chat-info">
+                <div class="chat-name">Kelsey Hightower <span class="ai-badge">AI</span></div>
+                <div class="chat-preview">Kubernetes is great but most companies don't need...</div>
+              </div>
+              <div class="chat-time">3h</div>
+            </li>
+
+            <li class="chat-list-item" style="opacity:0.6">
+              <div class="chat-avatar" style="background:linear-gradient(135deg,#94a3b8,#64748b)"></div>
+              <div class="chat-info">
+                <div class="chat-name">Dan Abramov <span class="ai-badge">AI</span></div>
+                <div class="chat-preview" style="font-style:italic;color:#f59e0b">Loading persona... (142/200 posts)</div>
+              </div>
+              <div class="chat-time">--</div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="tab-bar">
+          <div class="tab-item"><div class="tab-icon">&#x1F3E0;</div><span>Home</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F50D;</div><span>Explore</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F4AC;</div><span>Chats</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F514;</div><span>Notifs</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F464;</div><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label"><strong>Screen 3:</strong> AI Chat Inbox<br>Left swipe reveals red delete (shown on DHH row). Loading state for Dan Abramov. Accessed via hamburger menu.</div>
+  </div>
+
+  <!-- SCREEN 4: Chat Conversation -->
+  <div class="screen-container">
+    <div class="phone-frame">
+      <div class="phone-screen">
+        <div class="status-bar"><span>9:41</span><span>100%</span></div>
+        <div class="nav-header" style="justify-content:flex-start;gap:0;">
+          <span class="nav-back">&larr;</span>
+          <div class="persona-chat-header" style="margin-left:12px;">
+            <div class="persona-chat-avatar" style="background:linear-gradient(135deg,#0085ff,#00ba7c)"></div>
+            <div>
+              <div class="persona-chat-name">AI Paul Graham</div>
+              <div class="persona-chat-subtitle">200 posts loaded</div>
+            </div>
+          </div>
+          <span class="nav-dots" style="position:absolute;right:16px;">&middot;&middot;&middot;</span>
+
+          <!-- Three-dot dropdown -->
+          <div class="chat-dropdown">
+            <div class="chat-dropdown-item"><span>&#x1F464;</span> Go to profile</div>
+            <div class="chat-dropdown-item destructive"><span>&#x1F6AA;</span> Leave conversation</div>
+          </div>
+        </div>
+
+        <div class="messages">
+          <div class="message sent">What do you think makes a great startup founder?</div>
+          <div class="message received">The best founders I've seen at YC share a few things. They're relentlessly resourceful. They don't just work hard &mdash; they find creative solutions when direct paths are blocked.</div>
+          <div class="message sent">How do you know early on if an idea will work?</div>
+          <div class="message received">You often can't. The trick is to launch fast and pay close attention to what users actually do, not what they say.</div>
+          <div class="message sent">What about AI startups specifically?</div>
+          <div class="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+        </div>
+
+        <div class="debug-info">Corpus: 200 posts | Updated: 34s ago | Context: 47 posts selected</div>
+
+        <div class="message-input-area">
+          <div class="message-input">Message AI Paul Graham...</div>
+          <div class="send-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+          </div>
+        </div>
+
+        <div class="tab-bar">
+          <div class="tab-item"><div class="tab-icon">&#x1F3E0;</div><span>Home</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F50D;</div><span>Explore</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F4AC;</div><span>Chats</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F514;</div><span>Notifs</span></div>
+          <div class="tab-item"><div class="tab-icon">&#x1F464;</div><span>Profile</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="screen-label"><strong>Screen 4:</strong> Chat Conversation<br>Three-dot menu: "Go to profile" and "Leave conversation" only. Debug info bar. Streaming typing indicator.</div>
+  </div>
+
+</div>
+
+</body>
+</html>
