@@ -2,6 +2,24 @@
 
 Based on [requirements.md](requirements.md). See [wireframes.html](wireframes.html) for UI reference.
 
+## Table of Contents
+
+1. [System Architecture](#1-system-architecture)
+2. [Technology Stack](#2-technology-stack)
+3. [Project Structure](#3-project-structure)
+4. [Configuration](#4-configuration)
+5. [Database Schema](#5-database-schema)
+6. [API Contracts](#6-api-contracts)
+7. [Module Design](#7-module-design)
+8. [Application Lifecycle](#8-application-lifecycle)
+9. [SSE Implementation](#9-sse-implementation)
+10. [Firehose Event Processing](#10-firehose-event-processing)
+11. [Deployment](#11-deployment)
+12. [Testing Strategy](#12-testing-strategy)
+13. [Error Handling](#13-error-handling)
+14. [Development Environment](#14-development-environment)
+15. [Implementation Order](#15-implementation-order)
+
 ---
 
 ## 1. System Architecture
@@ -904,24 +922,69 @@ Well within the $100/month budget.
 
 ---
 
-## 14. Implementation Order
+## 14. Development Environment
 
-Each phase includes its own tests. A phase is not complete until all tests pass.
+### 14.1 Source Control
 
-### Phase 1: Foundation
+- **Repository**: GitHub (private), `tedd4u/bluesky-feed-consumer`
+- **Branch strategy**: feature branches off `master`, merged via pull request
+- **Commit convention**: imperative subject line, body explains "why"
+
+### 14.2 CI (GitHub Actions)
+
+Runs on every push to `master` and on all pull requests:
+
+1. **Lint** — `ruff check` (import ordering, unused variables, style)
+2. **Type check** — `mypy --strict` (full type coverage)
+3. **Test** — `pytest` (unit + integration tests)
+
+Workflow: `.github/workflows/ci.yml`
+
+All three must pass before a PR can merge. Locally, developers run the same checks via `make check`.
+
+### 14.3 Local Dev Workflow
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"      # or: uv sync --all-extras
+cp .env.example .env         # fill in DB URL + API keys
+createdb bsky && alembic upgrade head
+make check                   # lint + typecheck + test
+bsky-api-only                # run API without firehose
+```
+
+### 14.4 Tooling
+
+| Tool | Purpose | Config Location |
+|------|---------|-----------------|
+| ruff | Lint + format | `pyproject.toml [tool.ruff]` |
+| mypy | Type checking (strict) | `pyproject.toml [tool.mypy]` |
+| pytest | Tests | `pyproject.toml [tool.pytest]` |
+| alembic | DB migrations | `alembic.ini` + `alembic/` |
+| make | Task runner | `Makefile` |
+
+---
+
+## 15. Implementation Order
+
+Each phase includes its own tests. A phase is not complete until `make check` passes (lint + typecheck + tests). All work is done on feature branches and merged via PR with CI green.
+
+### Phase 1: Foundation ✅
 1. Project scaffolding (pyproject.toml, directory structure, config)
 2. Database models + Alembic migrations
 3. FastAPI app skeleton with auth middleware
-4. **Tests**: config validation, auth middleware (reject missing/bad key, accept good key), DB connection fixture
+4. CI: GitHub Actions running `make check` on PRs
+5. **Tests**: config validation, auth middleware (reject missing/bad key, accept good key)
 
-### Phase 2: Firehose + Stats
-5. Jetstream WebSocket consumer + event parser
-6. Stats processor (in-memory windowed aggregation)
-7. Velocity tracker (ring buffer)
-8. Snapshot writer (Postgres persistence)
-9. Stats API endpoints (GET /stats/{window})
-10. Stats SSE endpoint (GET /stats/stream)
-11. **Tests**: `test_parser.py` (event classification), `test_stats_processor.py` (window accumulation, rotation, deltas, top-N), `test_velocity.py` (ring buffer, bucket rotation), `test_api_stats.py` (endpoint responses, SSE connection, auth), mock firehose WebSocket
+### Phase 2: Firehose + Stats ✅
+6. Jetstream WebSocket consumer + event parser
+7. Stats processor (in-memory windowed aggregation)
+8. Velocity tracker (ring buffer)
+9. Snapshot writer (Postgres persistence)
+10. Wire into app lifespan with background tasks
+11. **Tests**: event classification, window accumulation, rotation, deltas, velocity ring buffer
+
+*Stats API endpoints (GET /stats/{window}, GET /stats/stream) are stubbed; full implementation in Phase 4.*
 
 ### Phase 3: Persona Chat
 12. AT Protocol fetcher (profile + post history)
@@ -930,16 +993,17 @@ Each phase includes its own tests. A phase is not complete until all tests pass.
 15. Context selection algorithm
 16. Claude API integration (streaming)
 17. Chat endpoints (POST/GET/DELETE)
-18. **Tests**: `test_context_selection.py` (ratio calc, recent/sampled split, repost exclusion, floor), `test_api_personas.py` (CRUD, status, duplicate handle, invalid handle), `test_api_chat.py` (streaming response, history retrieval, delete, chat with non-ready persona), mock AT Protocol responses, mock Claude streaming
+18. **Tests**: context selection (ratio calc, recent/sampled split, repost exclusion, floor), persona CRUD, chat streaming, mock AT Protocol + mock Claude
 
-### Phase 4: Polish
-19. Graceful shutdown (SIGTERM handler, flush stats)
+### Phase 4: API + Polish
+19. Stats API endpoints (GET /stats/{window} with real data, SSE stream)
 20. Error handling for all edge cases
 21. GCP Cloud Monitoring integration (structured logging, custom metrics)
-22. **Tests**: verify graceful shutdown flushes stats, error response formats, full test suite green
+22. **Tests**: API integration tests (stats, personas, chat), error response formats, full `make check` green
 
 ### Phase 5: Deploy
 23. GCP infrastructure setup (CE, Cloud SQL, Secret Manager, firewall)
 24. systemd service + deploy.sh script
-25. Cloud Monitoring dashboard
-26. **Tests**: end-to-end smoke test on GCP (connect firehose, verify stats flow, register persona, send chat message)
+25. **CD: extend GitHub Actions to deploy on merge to `master`** — if CI passes, SSH to CE and run `git pull && uv sync --frozen && sudo systemctl restart bsky-server` (continuous deployment, no manual deploy step)
+26. Cloud Monitoring dashboard
+27. **Tests**: end-to-end smoke test on GCP (connect firehose, verify stats flow, register persona, send chat message)

@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := check
 
-VENV := .venv/bin
+# Use .venv/bin/ prefix if it exists (local dev), otherwise bare commands (CI)
+BIN := $(shell [ -d .venv/bin ] && echo ".venv/bin/" || echo "")
 
 .PHONY: check lint typecheck test fmt
 
@@ -9,17 +10,17 @@ check: lint typecheck test
 
 ## Lint with ruff
 lint:
-	$(VENV)/ruff check src/ tests/
+	$(BIN)ruff check src/ tests/
 
 ## Type-check with mypy
 typecheck:
-	$(VENV)/mypy src/
+	$(BIN)mypy src/
 
 ## Run test suite
 test:
-	$(VENV)/pytest tests/ -v
+	$(BIN)pytest tests/ -v
 
 ## Auto-format and fix lint errors
 fmt:
-	$(VENV)/ruff format src/ tests/
-	$(VENV)/ruff check --fix src/ tests/
+	$(BIN)ruff format src/ tests/
+	$(BIN)ruff check --fix src/ tests/
