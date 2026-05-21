@@ -16,28 +16,30 @@ Shell scripts to provision, deploy, and tear down the GCP environment. All scrip
 The first run of `deploy.sh` generates an ed25519 SSH key on the CE instance and prints it. Add it to the GitHub repo:
 
 1. Run `./deploy.sh` — it will exit after printing the public key
-2. Go to https://github.com/tedd4u/bluesky-feed-consumer/settings/keys
+2. Go to your repo's **Settings > Deploy keys**
 3. Click **"Add deploy key"**
 4. Title: `bsky-server`
 5. Paste the public key
 6. Leave **"Allow write access" unchecked** (read-only is sufficient)
 7. Re-run `./deploy.sh`
 
-This key is also used by GitHub Actions CD (the action SSHes to CE which then does `git pull`).
+The deploy key persists on the CE instance's disk across restarts and project undelete/recreate cycles. It is also used by GitHub Actions CD (the action SSHes to CE which then does `git pull`).
 
 ### 2. DNS Delegation
 
-After `setup.sh` creates the Cloud DNS zone, it prints NS records. Add them in the parent domain's DNS project:
+If `DNS_SUBDOMAIN` is set in `.env.infra`, `setup.sh` creates a Cloud DNS zone and prints NS records. You need to add those NS records in the parent domain's DNS:
 
-1. Go to the Cloud DNS zone for `berbs.com` (in the "berbs" GCP project)
+1. Open the DNS management for the parent domain (e.g., Cloud DNS in another GCP project, or your registrar's DNS panel)
 2. Add an NS record set:
-   - **Name**: `api.bsky` (or whatever subdomain `setup.sh` created)
+   - **Name**: the subdomain configured in `DNS_SUBDOMAIN`
    - **Type**: NS
    - **TTL**: 300
    - **Data**: The 4 `ns-cloud-*.googledomains.com.` records printed by `setup.sh`
-3. Wait for propagation (~5 minutes): `dig api.bsky.berbs.com`
+3. Wait for propagation (~5 minutes): `dig <your-subdomain>`
 
 The NS records are also logged in `logs/latest-setup.log`.
+
+On subsequent runs, `setup.sh` will update the A record if the CE instance's IP has changed.
 
 ## Scripts
 
@@ -74,29 +76,47 @@ Secrets never appear in git. The CE instance's `.env` is written with `chmod 600
 
 ## Troubleshooting
 
+All commands below use variables from `.env.infra`. Source it first or substitute your values:
+
+```bash
+source .env.infra
+```
+
 ### SSH to the instance
 
 ```bash
-gcloud compute ssh bsky-server --zone=us-central1-a --project=bsky-feed-consumer-tm
+gcloud compute ssh bsky-server --zone="${ZONE}" --project="${PROJECT_ID}"
 ```
 
 ### Check service status
 
 ```bash
-gcloud compute ssh bsky-server --zone=us-central1-a --project=bsky-feed-consumer-tm \
+gcloud compute ssh bsky-server --zone="${ZONE}" --project="${PROJECT_ID}" \
     --command="sudo systemctl status bsky-server"
 ```
 
 ### View application logs
 
 ```bash
-gcloud compute ssh bsky-server --zone=us-central1-a --project=bsky-feed-consumer-tm \
+gcloud compute ssh bsky-server --zone="${ZONE}" --project="${PROJECT_ID}" \
     --command="sudo journalctl -u bsky-server -f"
 ```
 
 ### Rotate a secret
 
 ```bash
-echo "new-value" | gcloud secrets versions add bsky-api-key --data-file=- --project=bsky-feed-consumer-tm
+echo "new-value" | gcloud secrets versions add bsky-api-key --data-file=- --project="${PROJECT_ID}"
 ./deploy.sh   # re-writes .env on CE from Secret Manager
 ```
+
+## Nuke and Recreate Notes
+
+`teardown.sh` deletes the entire GCP project. GCP retains deleted projects for 30 days.
+
+If you **undelete** the same project ID (`gcloud projects undelete <id>`), be aware:
+- Resources (CE, Cloud SQL, secrets) survive but may be in a stale state (e.g., CE instance TERMINATED, APIs returning CONSUMER_INVALID)
+- API propagation after undelete can take 2-3 minutes — `setup.sh` may need a retry
+- The CE disk persists, so the deploy key and cloned repo survive
+- The CE external IP will change — `setup.sh` updates the DNS A record automatically
+
+For a truly clean start, use a new project ID in `.env.infra`.
