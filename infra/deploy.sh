@@ -18,27 +18,34 @@ DB_IP=$(gcloud sql instances describe bsky-db --format='value(ipAddresses[0].ipA
 gcloud compute ssh bsky-server --zone="${ZONE}" --project="${PROJECT_ID}" --command="
 set -e
 
-# Ensure deploy key exists for GitHub access
-if [ ! -f ~/.ssh/deploy_key ]; then
-    ssh-keygen -t ed25519 -f ~/.ssh/deploy_key -N '' -C 'bsky-server-deploy-key'
-    cat >> ~/.ssh/config << 'SSHEOF'
-Host github.com
-    IdentityFile ~/.ssh/deploy_key
-    StrictHostKeyChecking accept-new
-SSHEOF
-    chmod 600 ~/.ssh/config
+# Ensure deploy key exists for GitHub access (system-wide path so any OS user works)
+DEPLOY_KEY=/opt/bluesky-feed-consumer/.ssh/deploy_key
+if [ ! -f \"\${DEPLOY_KEY}\" ]; then
+    sudo mkdir -p /opt/bluesky-feed-consumer/.ssh
+    sudo ssh-keygen -t ed25519 -f \"\${DEPLOY_KEY}\" -N '' -C 'bsky-server-deploy-key'
+    sudo chmod 644 /opt/bluesky-feed-consumer/.ssh
+    sudo chmod 600 \"\${DEPLOY_KEY}\"
+    sudo chmod 644 \"\${DEPLOY_KEY}.pub\"
     echo ''
     echo '========================================='
     echo 'DEPLOY KEY (add to GitHub repo settings):'
     echo '========================================='
-    cat ~/.ssh/deploy_key.pub
+    cat \"\${DEPLOY_KEY}.pub\"
     echo '========================================='
-    echo 'Go to: https://github.com/tedd4u/bluesky-feed-consumer/settings/keys'
-    echo 'Click \"Add deploy key\", paste the key above, leave read-only.'
-    echo 'Then re-run this script.'
+    echo 'Add at: repo Settings > Deploy keys > Add deploy key'
+    echo 'Leave read-only. Then re-run this script.'
     echo '========================================='
     exit 1
 fi
+
+# Configure SSH to use the deploy key for GitHub
+mkdir -p ~/.ssh
+cat > ~/.ssh/config << SSHEOF
+Host github.com
+    IdentityFile \${DEPLOY_KEY}
+    StrictHostKeyChecking accept-new
+SSHEOF
+chmod 600 ~/.ssh/config
 
 # Ensure repo is cloned
 if [ ! -d /opt/bluesky-feed-consumer ]; then
