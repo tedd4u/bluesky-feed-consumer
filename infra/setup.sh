@@ -121,13 +121,22 @@ if [[ -n "${DNS_SUBDOMAIN:-}" ]]; then
     # Get the CE external IP
     CE_IP=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].natIP)' --project="${PROJECT_ID}")
 
-    # Create A record
-    gcloud dns record-sets create "${DNS_SUBDOMAIN}." \
-        --zone="${DNS_ZONE_NAME}" \
-        --type=A \
-        --ttl=300 \
-        --rrdatas="${CE_IP}" \
-        --project="${PROJECT_ID}" 2>/dev/null || true
+    # Create or update A record
+    if gcloud dns record-sets describe "${DNS_SUBDOMAIN}." --zone="${DNS_ZONE_NAME}" --type=A --project="${PROJECT_ID}" &>/dev/null; then
+        gcloud dns record-sets update "${DNS_SUBDOMAIN}." \
+            --zone="${DNS_ZONE_NAME}" \
+            --type=A \
+            --ttl=300 \
+            --rrdatas="${CE_IP}" \
+            --project="${PROJECT_ID}"
+    else
+        gcloud dns record-sets create "${DNS_SUBDOMAIN}." \
+            --zone="${DNS_ZONE_NAME}" \
+            --type=A \
+            --ttl=300 \
+            --rrdatas="${CE_IP}" \
+            --project="${PROJECT_ID}"
+    fi
 
     echo ""
     echo "==> DNS delegation required!"
