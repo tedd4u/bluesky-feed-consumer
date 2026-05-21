@@ -109,6 +109,54 @@ echo "new-value" | gcloud secrets versions add bsky-api-key --data-file=- --proj
 ./deploy.sh   # re-writes .env on CE from Secret Manager
 ```
 
+## Continuous Deployment (GitHub Actions)
+
+Merges to `master` automatically deploy via the `deploy` job in `.github/workflows/ci.yml`. CI (lint + typecheck + tests) must pass first.
+
+### One-Time Setup
+
+1. **Create a GCP service account** for GitHub Actions:
+
+```bash
+source .env.infra
+SA_NAME=github-actions-deploy
+
+gcloud iam service-accounts create "${SA_NAME}" \
+    --display-name="GitHub Actions Deploy" \
+    --project="${PROJECT_ID}"
+
+SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+# Grant SSH access to CE and Cloud SQL describe (for DB IP lookup)
+for ROLE in roles/compute.instanceAdmin.v1 roles/iam.serviceAccountUser roles/cloudsql.viewer; do
+    gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+        --member="serviceAccount:${SA_EMAIL}" \
+        --role="${ROLE}"
+done
+
+# Download key (store as GitHub secret, then delete the local file)
+gcloud iam service-accounts keys create sa-key.json \
+    --iam-account="${SA_EMAIL}" \
+    --project="${PROJECT_ID}"
+```
+
+2. **Add GitHub repository secrets and variables** (Settings > Secrets and variables > Actions):
+
+| Type | Name | Value |
+|------|------|-------|
+| Secret | `GCP_SA_KEY` | Contents of `sa-key.json` |
+| Variable | `GCP_PROJECT_ID` | Your GCP project ID |
+| Variable | `GCP_ZONE` | e.g. `us-central1-a` |
+
+3. **Create the `production` environment** (Settings > Environments > New environment > "production"). Optional: add reviewers for manual approval before deploy.
+
+4. **Delete the local key file**: `rm sa-key.json`
+
+### Triggering a Deploy
+
+- **Automatic**: push or merge to `master`
+- **Manual**: Actions tab > CI > Run workflow
+
 ## Nuke and Recreate Notes
 
 `teardown.sh` deletes the entire GCP project. GCP retains deleted projects for 30 days.
