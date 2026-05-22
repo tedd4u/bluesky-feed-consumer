@@ -30,6 +30,8 @@ class Settings(BaseSettings):
 
     sse_push_interval: float = 2.0
 
+    cors_origins: list[str] = ["*"]
+
     json_logs: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="BSKY_")
