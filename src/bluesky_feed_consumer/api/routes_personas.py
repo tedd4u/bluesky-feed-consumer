@@ -32,7 +32,7 @@ router = APIRouter(prefix="/personas", tags=["personas"], dependencies=[RequireA
 class CreatePersonaRequest(BaseModel):
     handle: str
 
-    model_config = ConfigDict(json_schema_extra={"examples": [{"handle": "elienyc.bsky.social"}]})
+    model_config = ConfigDict(json_schema_extra={"examples": [{"handle": "example.bsky.social"}]})
 
 
 class PersonaResponse(BaseModel):

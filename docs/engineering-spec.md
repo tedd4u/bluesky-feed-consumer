@@ -945,7 +945,7 @@ These will close the remaining coverage gap in I/O-heavy modules (`consumer.py`,
 
 ### 14.1 Source Control
 
-- **Repository**: GitHub (private), `tedd4u/bluesky-feed-consumer`
+- **Repository**: GitHub, `tedd4u/bluesky-feed-consumer`
 - **Branch strategy**: feature branches off `master`, merged via pull request
 - **Commit convention**: imperative subject line, body explains "why"
 

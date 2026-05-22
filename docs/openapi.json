@@ -523,7 +523,7 @@
                 "title": "CreatePersonaRequest",
                 "examples": [
                     {
-                        "handle": "elienyc.bsky.social"
+                        "handle": "example.bsky.social"
                     }
                 ]
             },
