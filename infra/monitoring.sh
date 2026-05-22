@@ -8,14 +8,20 @@ source "${SCRIPT_DIR}/lib-log.sh"
 source "${SCRIPT_DIR}/.env.infra" 2>/dev/null || { echo "ERROR: .env.infra not found."; exit 1; }
 
 : "${PROJECT_ID:?Set PROJECT_ID in .env.infra}"
+: "${REGION:=us-central1}"
 : "${ZONE:=us-central1-a}"
 : "${SLACK_WEBHOOK_URL:?Set SLACK_WEBHOOK_URL in .env.infra}"
 
 gcloud config set project "${PROJECT_ID}"
 
-# Get CE external IP
-CE_IP=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].natIP)' --project="${PROJECT_ID}")
-echo "==> CE instance IP: ${CE_IP}"
+# Resolve uptime check host: prefer DNS hostname, fall back to static IP
+if [[ -n "${DNS_SUBDOMAIN:-}" ]]; then
+    UPTIME_HOST="${DNS_SUBDOMAIN}"
+    echo "==> Uptime check host (DNS): ${UPTIME_HOST}"
+else
+    UPTIME_HOST=$(gcloud compute addresses describe bsky-server-ip --region="${REGION}" --format='value(address)' --project="${PROJECT_ID}")
+    echo "==> Uptime check host (static IP): ${UPTIME_HOST}"
+fi
 
 # --- Notification Channel (Slack) ---
 echo "==> Creating Slack notification channel"
@@ -52,7 +58,7 @@ if [[ -n "${EXISTING_CHECK}" ]]; then
 else
     gcloud monitoring uptime create "bsky-server-health" \
         --resource-type="uptime-url" \
-        --resource-labels="host=${CE_IP},project_id=${PROJECT_ID}" \
+        --resource-labels="host=${UPTIME_HOST},project_id=${PROJECT_ID}" \
         --port=8000 \
         --path="/health" \
         --protocol="http" \
@@ -357,7 +363,7 @@ fi
 echo ""
 echo "==> Monitoring setup complete!"
 echo "    Notification channel: Slack webhook"
-echo "    Uptime check: http://${CE_IP}:8000/health (every 60s)"
+echo "    Uptime check: http://${UPTIME_HOST}:8000/health (every 60s)"
 echo "    Alert policies:"
 echo "      - Service Down (health check failing > 60s)"
 echo "      - CE CPU High (> 80% for 5 min)"
