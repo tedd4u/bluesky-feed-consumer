@@ -7,7 +7,6 @@ A real-time Bluesky firehose consumer that computes rolling statistics (post cou
 - Python 3.12+
 - PostgreSQL 16+
 - An [Anthropic API key](https://console.anthropic.com/) (for persona chat)
-- A Bluesky API Key (called an "App Password"). Go to Settings > Privacy & Security > App Passwords to create one.
 
 ## Setup
 
@@ -58,7 +57,7 @@ API only (no firehose, useful for local dev):
 bsky-api-only
 ```
 
-The API runs at `http://localhost:8000` by default. All endpoints require an `X-API-Key` header matching your configured `BSKY_API_KEY`.
+The API runs at `http://localhost:8000` by default. All endpoints require an `X-Api-Key` header matching your configured `BSKY_SERVICE_API_KEY`.
 
 ## Development
 
@@ -125,7 +124,7 @@ An [OpenAPI 3.1 spec](docs/openapi.json) is included for importing into API clie
 1. **Import**: Open Bruno → Import Collection → **OpenAPI V3** → select `docs/openapi.json`
 2. **Environment**: Create a Bruno environment with two variables:
    - `baseUrl` — e.g. `http://localhost:8000` (or your deployed URL)
-   - `apiKey` — your `BSKY_API_KEY` value
+   - `apiKey` — your `BSKY_SERVICE_API_KEY` value
 3. **Collection headers**: Add `X-Api-Key: {{apiKey}}` as a collection-level header so it applies to every request
 
 The live service also exposes Swagger UI at `/docs` and the raw spec at `/openapi.json`.

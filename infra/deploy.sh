@@ -70,7 +70,7 @@ uv sync --frozen
 # Write .env from Secret Manager (secrets never touch git)
 cat > .env << ENVEOF
 BSKY_DATABASE_URL=postgresql+asyncpg://postgres:$(gcloud secrets versions access latest --secret=bsky-db-password --project=${PROJECT_ID})@${DB_IP}:5432/bsky
-BSKY_API_KEY=$(gcloud secrets versions access latest --secret=bsky-api-key --project=${PROJECT_ID})
+BSKY_SERVICE_API_KEY=$(gcloud secrets versions access latest --secret=bsky-api-key --project=${PROJECT_ID})
 BSKY_ANTHROPIC_API_KEY=$(gcloud secrets versions access latest --secret=bsky-anthropic-api-key --project=${PROJECT_ID})
 ENVEOF
 chmod 600 .env

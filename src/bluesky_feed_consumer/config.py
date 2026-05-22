@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://localhost:5432/bsky"
 
-    api_key: str = "dev-key"
+    service_api_key: str = "dev-key"
     host: str = "0.0.0.0"
     port: int = 8000
 

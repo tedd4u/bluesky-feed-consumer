@@ -13,7 +13,7 @@ from bluesky_feed_consumer.stats.processor import StatsProcessor
 def settings() -> Settings:
     return Settings(
         database_url="sqlite+aiosqlite://",
-        api_key="test-key",
+        service_api_key="test-key",
         jetstream_url="",
         anthropic_api_key="test-anthropic-key",
     )
