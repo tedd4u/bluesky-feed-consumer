@@ -77,6 +77,14 @@ gcloud sql databases create bsky \
 DB_IP=$(gcloud sql instances describe bsky-db --format='value(ipAddresses[0].ipAddress)' --project="${PROJECT_ID}")
 echo "    Cloud SQL private IP: ${DB_IP}"
 
+# --- Static External IP ---
+echo "==> Reserving static external IP"
+gcloud compute addresses describe bsky-server-ip --region="${REGION}" --project="${PROJECT_ID}" &>/dev/null || \
+gcloud compute addresses create bsky-server-ip --region="${REGION}" --project="${PROJECT_ID}"
+
+CE_STATIC_IP=$(gcloud compute addresses describe bsky-server-ip --region="${REGION}" --format='value(address)' --project="${PROJECT_ID}")
+echo "    Static IP: ${CE_STATIC_IP}"
+
 # --- Compute Engine ---
 echo "==> Creating CE instance"
 gcloud compute instances describe bsky-server --zone="${ZONE}" --project="${PROJECT_ID}" &>/dev/null || \
@@ -88,6 +96,7 @@ gcloud compute instances create bsky-server \
     --boot-disk-size=20GB \
     --scopes=cloud-platform \
     --tags=bsky-server \
+    --address=bsky-server-ip \
     --metadata=startup-script='#!/bin/bash
 # Install Python 3.12+ and uv
 apt-get update && apt-get install -y python3 python3-venv git
@@ -118,23 +127,20 @@ if [[ -n "${DNS_SUBDOMAIN:-}" ]]; then
         --description="Bluesky Feed Consumer subdomain" \
         --project="${PROJECT_ID}"
 
-    # Get the CE external IP
-    CE_IP=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].natIP)' --project="${PROJECT_ID}")
-
-    # Create or update A record
+    # Create or update A record using the static IP
     if gcloud dns record-sets describe "${DNS_SUBDOMAIN}." --zone="${DNS_ZONE_NAME}" --type=A --project="${PROJECT_ID}" &>/dev/null; then
         gcloud dns record-sets update "${DNS_SUBDOMAIN}." \
             --zone="${DNS_ZONE_NAME}" \
             --type=A \
             --ttl=300 \
-            --rrdatas="${CE_IP}" \
+            --rrdatas="${CE_STATIC_IP}" \
             --project="${PROJECT_ID}"
     else
         gcloud dns record-sets create "${DNS_SUBDOMAIN}." \
             --zone="${DNS_ZONE_NAME}" \
             --type=A \
             --ttl=300 \
-            --rrdatas="${CE_IP}" \
+            --rrdatas="${CE_STATIC_IP}" \
             --project="${PROJECT_ID}"
     fi
 
@@ -147,11 +153,10 @@ if [[ -n "${DNS_SUBDOMAIN:-}" ]]; then
 fi
 
 # --- Summary ---
-CE_IP=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].natIP)' --project="${PROJECT_ID}")
 echo ""
 echo "==> Infrastructure ready!"
-echo "    CE instance: bsky-server (${CE_IP})"
+echo "    CE instance: bsky-server (${CE_STATIC_IP})"
 echo "    Cloud SQL:   bsky-db (${DB_IP})"
-echo "    API URL:     http://${CE_IP}:8000"
+echo "    API URL:     http://${CE_STATIC_IP}:8000"
 echo ""
 echo "    Next: run ./deploy.sh to deploy the application."
