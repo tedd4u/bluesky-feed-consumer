@@ -156,7 +156,7 @@ class Settings(BaseSettings):
     database_url: str  # postgresql+asyncpg://...
 
     # API
-    api_key: str
+    service_api_key: str
     host: str = "0.0.0.0"
     port: int = 8000
 
@@ -810,7 +810,7 @@ The `bsky-server` CLI entrypoint is installed by `uv sync` (defined in `pyprojec
 - **Instance**: e2-small (0.5 vCPU, 2GB RAM), Debian 12
 - **Region**: us-central1 (close to Jetstream servers on US East, close to Cloud SQL)
 - **Software**: Python 3.12+ and `uv` installed via startup script
-- **Secrets**: `BSKY_ANTHROPIC_API_KEY` and `BSKY_API_KEY` stored in GCP Secret Manager, loaded into `/opt/bluesky-feed-consumer/.env` by a startup script
+- **Secrets**: `BSKY_ANTHROPIC_API_KEY` and `BSKY_SERVICE_API_KEY` stored in GCP Secret Manager, loaded into `/opt/bluesky-feed-consumer/.env` by a startup script
 - **Firewall**: Allow inbound TCP 8000 from app client IPs (or 0.0.0.0/0 for demo)
 
 ### systemd Service

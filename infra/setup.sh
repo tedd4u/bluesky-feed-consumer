@@ -15,7 +15,7 @@ source "${REPO_ROOT}/.env" 2>/dev/null || { echo "ERROR: .env not found (needed 
 : "${REGION:=us-central1}"
 : "${ZONE:=us-central1-a}"
 : "${DB_PASSWORD:?Set DB_PASSWORD in .env.infra}"
-: "${BSKY_API_KEY:?Set BSKY_API_KEY in .env}"
+: "${BSKY_SERVICE_API_KEY:?Set BSKY_SERVICE_API_KEY in .env}"
 : "${BSKY_ANTHROPIC_API_KEY:?Set BSKY_ANTHROPIC_API_KEY in .env}"
 
 gcloud config set project "${PROJECT_ID}"
@@ -26,7 +26,7 @@ for SECRET in bsky-api-key bsky-anthropic-api-key bsky-db-password; do
     gcloud secrets create "${SECRET}" --replication-policy=automatic 2>/dev/null || true
 done
 
-echo "${BSKY_API_KEY}" | gcloud secrets versions add bsky-api-key --data-file=-
+echo "${BSKY_SERVICE_API_KEY}" | gcloud secrets versions add bsky-api-key --data-file=-
 echo "${BSKY_ANTHROPIC_API_KEY}" | gcloud secrets versions add bsky-anthropic-api-key --data-file=-
 echo "${DB_PASSWORD}" | gcloud secrets versions add bsky-db-password --data-file=-
 

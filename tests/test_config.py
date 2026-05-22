@@ -18,11 +18,11 @@ def test_default_settings():
 
 def test_settings_from_env(monkeypatch):
     monkeypatch.setenv("BSKY_PORT", "9000")
-    monkeypatch.setenv("BSKY_API_KEY", "my-secret")
+    monkeypatch.setenv("BSKY_SERVICE_API_KEY", "my-secret")
     monkeypatch.setenv("BSKY_WINDOW_SIZES", "[30, 120]")
     settings = Settings()
     assert settings.port == 9000
-    assert settings.api_key == "my-secret"
+    assert settings.service_api_key == "my-secret"
     assert settings.window_sizes == [30, 120]
 
 

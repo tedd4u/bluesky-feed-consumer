@@ -14,7 +14,7 @@ async def verify_api_key(
     x_api_key: Annotated[str, Header()],
     settings: SettingsDep,
 ) -> None:
-    if x_api_key != settings.api_key:
+    if x_api_key != settings.service_api_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
 
