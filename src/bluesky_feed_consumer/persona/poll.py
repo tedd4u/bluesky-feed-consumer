@@ -58,57 +58,77 @@ async def _process_persona(
     session_factory: async_sessionmaker[AsyncSession],
     settings: Settings,
 ) -> None:
-    """Fetch profile + posts for a single persona, update DB."""
+    """Fetch profile + posts for a single persona, update DB.
+
+    Profile info is committed first so the client can show the avatar
+    while posts are still loading.  Posts are persisted in page-sized
+    batches (20 at a time) with ``total_posts`` updated after each
+    batch, giving the client visible forward progress.
+    """
     logger.info("Processing persona @%s (id=%d)", persona.handle, persona.id)
 
     try:
-        # Fetch profile
+        # 1. Fetch and persist profile info immediately
         profile = await fetcher.fetch_profile(persona.handle)
-
-        # Fetch posts
-        fetched_posts = await fetcher.fetch_posts(profile.did, settings.max_history_posts)
-
-        # Persist to DB
         async with session_factory() as session:
-            # Re-fetch persona within this session
             result = await session.execute(select(Persona).where(Persona.id == persona.id))
             db_persona = result.scalar_one()
-
-            # Update profile info
             db_persona.did = profile.did
             db_persona.display_name = profile.display_name
             db_persona.bio = profile.bio
             db_persona.avatar_url = profile.avatar_url
-
-            # Insert posts (ON CONFLICT DO NOTHING for dedup)
-            post_count = 0
-            reply_count = 0
-            for fp in fetched_posts:
-                post = _fetched_to_model(fp, db_persona.id)
-                # Check if already exists
-                existing = await session.execute(
-                    select(PersonaPost).where(PersonaPost.post_uri == fp.uri)
-                )
-                if existing.scalar_one_or_none() is None:
-                    session.add(post)
-                    if fp.post_type == "reply":
-                        reply_count += 1
-                    else:
-                        post_count += 1
-
-            db_persona.total_posts = post_count + reply_count
-            db_persona.total_replies = reply_count
-            db_persona.status = PersonaStatus.READY
-            db_persona.last_corpus_update = datetime.datetime.now(datetime.UTC)
-            db_persona.error_message = None
-
             await session.commit()
-            logger.info(
-                "Persona @%s ready: %d posts, %d replies",
+
+        # 2. Fetch posts in pages, persisting each batch
+        total_posts = 0
+        total_replies = 0
+
+        async for page in fetcher.fetch_posts_paginated(
+            profile.did, settings.max_history_posts
+        ):
+            async with session_factory() as session:
+                result = await session.execute(
+                    select(Persona).where(Persona.id == persona.id)
+                )
+                db_persona = result.scalar_one()
+
+                for fp in page:
+                    existing = await session.execute(
+                        select(PersonaPost).where(PersonaPost.post_uri == fp.uri)
+                    )
+                    if existing.scalar_one_or_none() is None:
+                        session.add(_fetched_to_model(fp, db_persona.id))
+                        if fp.post_type == "reply":
+                            total_replies += 1
+                        else:
+                            total_posts += 1
+
+                db_persona.total_posts = total_posts + total_replies
+                db_persona.total_replies = total_replies
+                db_persona.last_corpus_update = datetime.datetime.now(datetime.UTC)
+                await session.commit()
+
+            logger.debug(
+                "Persona @%s progress: %d posts, %d replies",
                 persona.handle,
-                post_count,
-                reply_count,
+                total_posts,
+                total_replies,
             )
+
+        # 3. Mark ready
+        async with session_factory() as session:
+            result = await session.execute(select(Persona).where(Persona.id == persona.id))
+            db_persona = result.scalar_one()
+            db_persona.status = PersonaStatus.READY
+            db_persona.error_message = None
+            await session.commit()
+
+        logger.info(
+            "Persona @%s ready: %d posts, %d replies",
+            persona.handle,
+            total_posts,
+            total_replies,
+        )
 
     except Exception as exc:
         logger.exception("Failed to process persona @%s", persona.handle)

@@ -37,16 +37,8 @@ def _settings() -> Settings:
     )
 
 
-def _mock_fetcher(posts_count: int = 3) -> AsyncMock:
-    fetcher = AsyncMock()
-    fetcher.fetch_profile.return_value = FetchedProfile(
-        did="did:plc:abc123",
-        handle="test.bsky.social",
-        display_name="Test User",
-        bio="I test things",
-        avatar_url="https://avatar.example/test.jpg",
-    )
-    fetcher.fetch_posts.return_value = [
+def _make_posts(count: int) -> list[FetchedPost]:
+    return [
         FetchedPost(
             uri=f"at://did:plc:abc123/app.bsky.feed.post/{i}",
             post_type="post" if i % 2 == 0 else "reply",
@@ -59,8 +51,27 @@ def _mock_fetcher(posts_count: int = 3) -> AsyncMock:
             repost_count=0,
             reply_count=0,
         )
-        for i in range(posts_count)
+        for i in range(count)
     ]
+
+
+def _mock_fetcher(posts_count: int = 3) -> AsyncMock:
+    fetcher = AsyncMock()
+    fetcher.fetch_profile.return_value = FetchedProfile(
+        did="did:plc:abc123",
+        handle="test.bsky.social",
+        display_name="Test User",
+        bio="I test things",
+        avatar_url="https://avatar.example/test.jpg",
+    )
+    # _process_persona now iterates fetch_posts_paginated (async generator).
+    # We simulate it by returning an async iterator over a single page.
+    posts = _make_posts(posts_count)
+
+    async def _paginated(*_args, **_kwargs):  # noqa: ANN002
+        yield posts
+
+    fetcher.fetch_posts_paginated = _paginated
     return fetcher
 
 
@@ -90,7 +101,6 @@ async def test_poll_once_processes_loading_persona(poll_session_factory):
         assert persona.last_corpus_update is not None
 
     fetcher.fetch_profile.assert_called_once_with("test.bsky.social")
-    fetcher.fetch_posts.assert_called_once()
 
 
 @pytest.mark.asyncio

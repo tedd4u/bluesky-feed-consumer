@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 
 import httpx
@@ -65,20 +66,26 @@ class PersonaFetcher:
             avatar_url=data.get("avatar", ""),
         )
 
-    async def fetch_posts(self, did: str, limit: int | None = None) -> list[FetchedPost]:
-        """Fetch post history via getAuthorFeed with pagination.
+    async def fetch_posts_paginated(
+        self,
+        did: str,
+        limit: int | None = None,
+        page_size: int = 20,
+    ) -> AsyncIterator[list[FetchedPost]]:
+        """Yield pages of posts so callers can persist incrementally.
 
-        Filters out pure reposts. Classifies as post/reply/quote.
-        Returns up to ``limit`` posts (default from settings).
+        Each yielded list contains up to *page_size* parsed posts (after
+        filtering out pure reposts).  The Bluesky API caps a single request
+        at 100, so *page_size* is clamped to that.
         """
         if limit is None:
             limit = self.settings.max_history_posts
+        page_size = min(page_size, 100)  # API hard max
 
-        posts: list[FetchedPost] = []
+        total = 0
         cursor: str | None = None
-        page_size = min(limit, 100)  # API max per page
 
-        while len(posts) < limit:
+        while total < limit:
             params: dict[str, str | int] = {
                 "actor": did,
                 "limit": page_size,
@@ -98,18 +105,33 @@ class PersonaFetcher:
             if not feed:
                 break
 
+            page: list[FetchedPost] = []
             for item in feed:
                 parsed = _parse_feed_item(item)
                 if parsed is not None:
-                    posts.append(parsed)
-                    if len(posts) >= limit:
+                    page.append(parsed)
+                    total += 1
+                    if total >= limit:
                         break
+
+            if page:
+                yield page
 
             cursor = data.get("cursor")
             if not cursor:
                 break
 
-        logger.info("Fetched %d posts for %s", len(posts), did)
+        logger.info("Fetched %d posts for %s", total, did)
+
+    async def fetch_posts(self, did: str, limit: int | None = None) -> list[FetchedPost]:
+        """Fetch post history via getAuthorFeed with pagination.
+
+        Convenience wrapper around :meth:`fetch_posts_paginated` that
+        collects all pages into a single list.
+        """
+        posts: list[FetchedPost] = []
+        async for page in self.fetch_posts_paginated(did, limit):
+            posts.extend(page)
         return posts
 
 
