@@ -9,6 +9,7 @@ source "${SCRIPT_DIR}/.env.infra" 2>/dev/null || { echo "ERROR: .env.infra not f
 
 : "${PROJECT_ID:?Set PROJECT_ID in .env.infra}"
 : "${ZONE:=us-central1-a}"
+: "${DNS_SUBDOMAIN:=}"
 
 echo "==> Deploying to bsky-server..."
 
@@ -84,10 +85,47 @@ sudo systemctl daemon-reload
 sudo systemctl enable bsky-server
 sudo systemctl restart bsky-server
 
+# --- Caddy reverse proxy (HTTPS) ---
+if [[ -n '${DNS_SUBDOMAIN}' ]] && [[ '${DNS_SUBDOMAIN}' != '' ]]; then
+    echo '==> Setting up Caddy reverse proxy for HTTPS'
+
+    # Install Caddy if not present
+    if ! command -v caddy &>/dev/null; then
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl >/dev/null 2>&1
+        curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg 2>/dev/null
+        curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq caddy >/dev/null 2>&1
+        echo '    Caddy installed.'
+    fi
+
+    # Write Caddyfile with the actual domain
+    sudo tee /etc/caddy/Caddyfile >/dev/null <<CADDYEOF
+${DNS_SUBDOMAIN} {
+    reverse_proxy localhost:8000
+}
+CADDYEOF
+
+    sudo systemctl enable caddy
+    sudo systemctl reload caddy 2>/dev/null || sudo systemctl restart caddy
+    echo '    Caddy configured for ${DNS_SUBDOMAIN}'
+else
+    echo '==> Skipping Caddy setup (DNS_SUBDOMAIN not set)'
+fi
+
 echo 'Deploy complete.'
 "
 
 sleep 3
 echo "==> Checking health..."
-CE_IP=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].natIP)' --project="${PROJECT_ID}")
-curl -sf "http://${CE_IP}:8000/health" && echo " OK" || echo " FAILED (service may still be starting)"
+if [[ -n "${DNS_SUBDOMAIN}" ]]; then
+    curl -sf "https://${DNS_SUBDOMAIN}/health" && echo " OK (HTTPS)" || {
+        echo " HTTPS not ready yet, trying direct..."
+        CE_IP=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].natIP)' --project="${PROJECT_ID}")
+        curl -sf "http://${CE_IP}:8000/health" && echo " OK (direct)" || echo " FAILED (service may still be starting)"
+    }
+else
+    CE_IP=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].natIP)' --project="${PROJECT_ID}")
+    curl -sf "http://${CE_IP}:8000/health" && echo " OK" || echo " FAILED (service may still be starting)"
+fi

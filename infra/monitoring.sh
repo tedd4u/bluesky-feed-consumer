@@ -53,19 +53,40 @@ EXISTING_CHECK=$(gcloud monitoring uptime list-configs \
     --format='value(name)' \
     --project="${PROJECT_ID}" 2>/dev/null || true)
 
-if [[ -n "${EXISTING_CHECK}" ]]; then
-    echo "    Uptime check already exists."
+# Determine desired protocol
+if [[ -n "${DNS_SUBDOMAIN:-}" ]]; then
+    UPTIME_PORT=443
+    UPTIME_PROTO="https"
 else
+    UPTIME_PORT=8000
+    UPTIME_PROTO="http"
+fi
+
+if [[ -n "${EXISTING_CHECK}" ]]; then
+    # Re-create if the existing check uses a different port (e.g. migrating HTTP→HTTPS)
+    EXISTING_PORT=$(gcloud monitoring uptime describe "${EXISTING_CHECK}" \
+        --format='value(monitoredResource.labels.port)' \
+        --project="${PROJECT_ID}" 2>/dev/null || echo "")
+    if [[ "${EXISTING_PORT}" != "${UPTIME_PORT}" ]]; then
+        echo "    Uptime check exists on port ${EXISTING_PORT}, migrating to ${UPTIME_PROTO}:${UPTIME_PORT}..."
+        gcloud monitoring uptime delete "${EXISTING_CHECK}" --project="${PROJECT_ID}" --quiet
+        EXISTING_CHECK=""
+    else
+        echo "    Uptime check already exists (${UPTIME_PROTO}:${UPTIME_PORT})."
+    fi
+fi
+
+if [[ -z "${EXISTING_CHECK}" ]]; then
     gcloud monitoring uptime create "bsky-server-health" \
         --resource-type="uptime-url" \
         --resource-labels="host=${UPTIME_HOST},project_id=${PROJECT_ID}" \
-        --port=8000 \
+        --port="${UPTIME_PORT}" \
         --path="/health" \
-        --protocol="http" \
+        --protocol="${UPTIME_PROTO}" \
         --period=1 \
         --timeout=10 \
         --project="${PROJECT_ID}"
-    echo "    Created uptime check."
+    echo "    Created uptime check (${UPTIME_PROTO}:${UPTIME_PORT})."
 fi
 
 # --- Alert Policies ---
@@ -363,7 +384,11 @@ fi
 echo ""
 echo "==> Monitoring setup complete!"
 echo "    Notification channel: Slack webhook"
-echo "    Uptime check: http://${UPTIME_HOST}:8000/health (every 60s)"
+if [[ -n "${DNS_SUBDOMAIN:-}" ]]; then
+    echo "    Uptime check: https://${UPTIME_HOST}/health (every 60s)"
+else
+    echo "    Uptime check: http://${UPTIME_HOST}:8000/health (every 60s)"
+fi
 echo "    Alert policies:"
 echo "      - Service Down (health check failing > 60s)"
 echo "      - CE CPU High (> 80% for 5 min)"
