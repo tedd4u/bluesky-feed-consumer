@@ -53,7 +53,9 @@ async def test_get_stats_with_deltas(client, processor):
     # First window: 10 posts
     for _ in range(10):
         processor.ingest(_event("post"))
-    processor.rotate_window(60)
+    snap1 = processor.rotate_window(60)
+    assert snap1 is not None
+    processor.commit_previous(60, snap1)
 
     # Second window: 5 posts
     for _ in range(5):

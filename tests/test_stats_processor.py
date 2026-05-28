@@ -127,7 +127,10 @@ class TestStatsProcessor:
     def test_rotate_stores_previous(self) -> None:
         proc = StatsProcessor(_settings())
         proc.ingest(_event("post"))
-        proc.rotate_window(60)
+        snap = proc.rotate_window(60)
+        assert snap is not None
+        # Caller must explicitly commit the snapshot as "previous"
+        proc.commit_previous(60, snap)
 
         prev = proc.get_previous_snapshot(60)
         assert prev is not None
@@ -159,11 +162,18 @@ class TestStatsProcessor:
         # First window: 10 posts
         for _ in range(10):
             proc.ingest(_event("post"))
-        proc.rotate_window(60)
+        snap1 = proc.rotate_window(60)
+        assert snap1 is not None
+        proc.commit_previous(60, snap1)
 
         # Second window: 15 posts
         for _ in range(15):
             proc.ingest(_event("post"))
+
+        # Simulate being at the end of the 60 s window so extrapolation
+        # scale ≈ 1 and the delta reflects actual vs previous counts.
+        window = proc.windows[60]
+        window.window_start = datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=60)
 
         stats = proc.get_current_stats()
         windows = stats["windows"]
@@ -179,7 +189,9 @@ class TestStatsProcessor:
         proc = StatsProcessor(_settings())
 
         # First window: 0 posts (empty), just rotate
-        proc.rotate_window(60)
+        snap0 = proc.rotate_window(60)
+        assert snap0 is not None
+        proc.commit_previous(60, snap0)
 
         # Second window: some posts
         proc.ingest(_event("post"))
