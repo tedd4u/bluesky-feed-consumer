@@ -49,7 +49,9 @@ async def _persist_snapshot(
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     """Write a WindowSnapshot to the database as a StatSnapshot row."""
+    # Read the *old* previous before promoting the new snapshot
     prev = processor.get_previous_snapshot(snap.window_seconds)
+    processor.commit_previous(snap.window_seconds, snap)
 
     try:
         async with session_factory() as session:

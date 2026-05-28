@@ -225,15 +225,29 @@ class StatsProcessor:
             window.record(event)
 
     def rotate_window(self, window_seconds: int) -> WindowSnapshot | None:
-        """Rotate a specific window: snapshot current state, reset, return snapshot."""
+        """Rotate a specific window: snapshot current state, reset, return snapshot.
+
+        Updates ``self._previous`` *after* the caller has had a chance to
+        read the old previous via ``get_previous_snapshot``, so that delta
+        computation compares the *new* snapshot against the *preceding* one
+        (not against itself).
+        """
         window = self.windows.get(window_seconds)
         if window is None:
             return None
 
         snap = window.snapshot()
-        self._previous[window_seconds] = snap
         window.reset()
         return snap
+
+    def commit_previous(self, window_seconds: int, snap: WindowSnapshot) -> None:
+        """Store *snap* as the previous snapshot for the next delta calculation.
+
+        Called by the snapshot writer after reading the old previous, so that
+        ``get_previous_snapshot`` returns the correct (preceding) window
+        during ``_persist_snapshot``.
+        """
+        self._previous[window_seconds] = snap
 
     def get_previous_snapshot(self, window_seconds: int) -> WindowSnapshot | None:
         """Return the previous snapshot for delta calculation."""
@@ -241,10 +255,12 @@ class StatsProcessor:
 
     def get_current_stats(self) -> dict[str, object]:
         """Return current in-memory stats for all windows. Used by SSE endpoint."""
+        now = datetime.datetime.now(datetime.UTC)
         windows: dict[str, object] = {}
         for size, window in self.windows.items():
             snap = window.snapshot()
             prev = self._previous.get(size)
+            elapsed = (now - snap.window_start).total_seconds()
             windows[str(size)] = {
                 "window_seconds": size,
                 "window_start": snap.window_start.isoformat(),
@@ -255,7 +271,7 @@ class StatsProcessor:
                     "repost_count": snap.repost_count,
                     "reply_count": snap.reply_count,
                 },
-                "deltas": _compute_deltas(snap, prev) if prev else None,
+                "deltas": _compute_deltas(snap, prev, size, elapsed) if prev else None,
                 "top_liked": snap.top_liked,
                 "top_reposted": snap.top_reposted,
                 "language_breakdown": snap.language_breakdown,
@@ -271,14 +287,33 @@ class StatsProcessor:
         }
 
 
-def _compute_deltas(current: WindowSnapshot, previous: WindowSnapshot) -> dict[str, float | None]:
-    """Compute period-over-period percentage change."""
+def _compute_deltas(
+    current: WindowSnapshot,
+    previous: WindowSnapshot,
+    window_seconds: int = 0,
+    elapsed_seconds: float = 0,
+) -> dict[str, float | None]:
+    """Compute period-over-period percentage change.
+
+    When *window_seconds* and *elapsed_seconds* are provided (live SSE path),
+    the current partial window is extrapolated to a full-window projection
+    before comparing against the previous completed window.  Without this,
+    a window that is 20 s into a 60 s period would always show ~-67%.
+    """
+    # If we have timing info and haven't completed the full window, project.
+    min_elapsed = max(window_seconds * 0.05, 2)  # need at least 5 % or 2 s of data
+    if window_seconds > 0 and 0 < elapsed_seconds < window_seconds:
+        scale = window_seconds / elapsed_seconds if elapsed_seconds >= min_elapsed else 0
+    else:
+        scale = 1  # completed window or DB snapshot — no extrapolation
+
     result: dict[str, float | None] = {}
     for metric in ("post_count", "user_count", "like_count", "repost_count", "reply_count"):
         cur_val = getattr(current, metric)
         prev_val = getattr(previous, metric)
-        if prev_val and prev_val > 0:
-            result[metric] = round((cur_val - prev_val) / prev_val, 4)
+        if prev_val and prev_val > 0 and scale > 0:
+            projected = cur_val * scale
+            result[metric] = round((projected - prev_val) / prev_val, 4)
         else:
             result[metric] = None
     return result
