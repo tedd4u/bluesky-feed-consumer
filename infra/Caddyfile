@@ -1,0 +1,6 @@
+# Caddy reverse proxy: auto-provisions Let's Encrypt TLS certificate.
+# The {$BSKY_DOMAIN} placeholder is replaced by deploy.sh with the
+# actual DNS_SUBDOMAIN value (e.g. api.bsky.berbs.com).
+{$BSKY_DOMAIN} {
+    reverse_proxy localhost:8000
+}

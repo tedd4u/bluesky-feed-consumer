@@ -87,25 +87,37 @@ echo "    Static IP: ${CE_STATIC_IP}"
 
 # --- Compute Engine ---
 echo "==> Creating CE instance"
-gcloud compute instances describe bsky-server --zone="${ZONE}" --project="${PROJECT_ID}" &>/dev/null || \
-gcloud compute instances create bsky-server \
-    --zone="${ZONE}" \
-    --machine-type=e2-small \
-    --image-family=debian-12 \
-    --image-project=debian-cloud \
-    --boot-disk-size=20GB \
-    --scopes=cloud-platform \
-    --tags=bsky-server \
-    --address=bsky-server-ip \
-    --metadata=startup-script='#!/bin/bash
+if gcloud compute instances describe bsky-server --zone="${ZONE}" --project="${PROJECT_ID}" &>/dev/null; then
+    echo "    Instance already exists."
+    # Ensure the static IP is attached (handles migration from ephemeral IP)
+    CURRENT_IP=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].natIP)' --project="${PROJECT_ID}")
+    if [[ "${CURRENT_IP}" != "${CE_STATIC_IP}" ]]; then
+        echo "    Attaching static IP (swapping from ${CURRENT_IP}, brief interruption)..."
+        ACCESS_CONFIG_NAME=$(gcloud compute instances describe bsky-server --zone="${ZONE}" --format='value(networkInterfaces[0].accessConfigs[0].name)' --project="${PROJECT_ID}")
+        gcloud compute instances delete-access-config bsky-server --zone="${ZONE}" --access-config-name="${ACCESS_CONFIG_NAME}" --project="${PROJECT_ID}"
+        gcloud compute instances add-access-config bsky-server --zone="${ZONE}" --address="${CE_STATIC_IP}" --access-config-name="${ACCESS_CONFIG_NAME}" --project="${PROJECT_ID}"
+        echo "    Static IP attached."
+    fi
+else
+    gcloud compute instances create bsky-server \
+        --zone="${ZONE}" \
+        --machine-type=e2-small \
+        --image-family=debian-12 \
+        --image-project=debian-cloud \
+        --boot-disk-size=20GB \
+        --scopes=cloud-platform \
+        --tags=bsky-server \
+        --address=bsky-server-ip \
+        --metadata=startup-script='#!/bin/bash
 # Install Python 3.12+ and uv
 apt-get update && apt-get install -y python3 python3-venv git
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ' \
-    --project="${PROJECT_ID}"
+        --project="${PROJECT_ID}"
+fi
 
 # --- Firewall ---
-echo "==> Creating firewall rule for port 8000"
+echo "==> Creating firewall rules"
 gcloud compute firewall-rules describe allow-bsky-api --project="${PROJECT_ID}" &>/dev/null || \
 gcloud compute firewall-rules create allow-bsky-api \
     --direction=INGRESS \
@@ -113,6 +125,18 @@ gcloud compute firewall-rules create allow-bsky-api \
     --network=default \
     --action=ALLOW \
     --rules=tcp:8000 \
+    --target-tags=bsky-server \
+    --source-ranges=0.0.0.0/0 \
+    --project="${PROJECT_ID}"
+
+echo "==> Creating firewall rule for HTTPS (443) and HTTP (80, for ACME challenges)"
+gcloud compute firewall-rules describe allow-bsky-https --project="${PROJECT_ID}" &>/dev/null || \
+gcloud compute firewall-rules create allow-bsky-https \
+    --direction=INGRESS \
+    --priority=1000 \
+    --network=default \
+    --action=ALLOW \
+    --rules=tcp:80,tcp:443 \
     --target-tags=bsky-server \
     --source-ranges=0.0.0.0/0 \
     --project="${PROJECT_ID}"
@@ -157,6 +181,10 @@ echo ""
 echo "==> Infrastructure ready!"
 echo "    CE instance: bsky-server (${CE_STATIC_IP})"
 echo "    Cloud SQL:   bsky-db (${DB_IP})"
-echo "    API URL:     http://${CE_STATIC_IP}:8000"
+if [[ -n "${DNS_SUBDOMAIN:-}" ]]; then
+    echo "    API URL:     https://${DNS_SUBDOMAIN}  (HTTPS via Caddy, provisioned on first deploy)"
+else
+    echo "    API URL:     http://${CE_STATIC_IP}:8000"
+fi
 echo ""
 echo "    Next: run ./deploy.sh to deploy the application."
